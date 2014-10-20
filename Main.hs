@@ -43,6 +43,7 @@ main = do
 	print (length fetched)
 
 
+-- | Given a URL, finds all HTML links on the page
 getARefs :: String -> IO [String]
 getARefs url = do
 	ersp <- simpleHTTP (getRequest url)
@@ -54,12 +55,18 @@ getARefs url = do
 						  (key,val) <- attrs, key `elem` ["href","HREF"]
 						  ]
 
+-- | Takes a URL and finds all zip files linked from it.
+-- TODO: handle case insensitive matching of the .zip suffix
 joinLinks :: String -> IO [String]
 joinLinks url = do
 	links <-getARefs url
 	return . filter (isSuffixOf ".zip") . catMaybes .  map (joinURIs url) $ links
 
 
+-- | Takes a base URL and a path relative to that URL and joins them:
+-- 		joinURIs "http://example.com/foo/bar" "/baz/quux.txt" -> Just "http://example.com/baz/quux.txt"
+-- 		joinURIs "http://example.com/foo/bar" "baz/quux.txt"  -> Just "http://example.com/foo/baz/quux.txt"
+-- 		joinURIs "http://example.com/foo/bar/" "baz/quux.txt" -> Just "http://example.com/foo/bar/baz/quux.txt"
 joinURIs :: String -> String -> Maybe String
 joinURIs base relative = do
 	buri <- parseURI         base
@@ -67,6 +74,8 @@ joinURIs base relative = do
 	joined <- return $ ruri `relativeTo` buri
 	return $ show joined
 
+-- | Given a list of URLs, attempts to fetch them all and pairs the result with
+--   the url of the request. It performs fetches concurrently in groups of 20
 fetchFiles :: [String] -> IO [(String,Either String ByteString)]
 fetchFiles urls =
 	concat <$> mapM (mapConcurrently fetch) (chunksOf 20 urls) where
@@ -85,7 +94,8 @@ fetchFiles urls =
 
 
 
-parseAEMO :: ByteString -> Either String (Vector (String, String, String, Int, String, String, Double))
+-- | (Will be) used to parse the AEMO CSV files which contain daily data
+parseAEMO :: BSL.ByteString -> Either String (Vector (String, String, String, Int, String, String, Double))
 parseAEMO file =
 	-- Removes the beginning and end lines of the file
 	-- AEMO data files have two headers and a footer which causes issues when parsing
