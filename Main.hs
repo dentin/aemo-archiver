@@ -1,19 +1,21 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections     #-}
 
 module Main where
 
-import Text.HTML.TagSoup
-import Network.HTTP
+
 -- import qualified Data.Text as T
 -- import           Data.Text (Text)
 -- import qualified Data.ByteString as BS
 -- import           Data.ByteString (ByteString)
-import           Data.ByteString.Lazy (ByteString)
-import qualified Data.ByteString.Lazy as BSL
+import           Data.ByteString            (ByteString)
+import qualified Data.ByteString            as BS
+import           Data.ByteString.Lazy       ()
+import qualified Data.ByteString.Lazy       as BSL
 
-import           Data.Vector (Vector)
-import qualified Data.Vector as V
+
+import           Data.Vector                (Vector)
+-- import qualified Data.Vector as V
 
 import           Data.ByteString.Lazy.Char8 ()
 import qualified Data.ByteString.Lazy.Char8 as C
@@ -22,17 +24,23 @@ import           Control.Concurrent.Async
 import           Control.Exception          (SomeException, catch)
 import           Data.Csv
 
-import Network.URI
+import           Network.HTTP
+import           Network.Stream             (ConnError (..))
+import           Network.URI
+import           Text.HTML.TagSoup
 
-import Data.List (isSuffixOf)
-import Data.Maybe (catMaybes)
-import Data.Either (isLeft)
+import           Control.Applicative
+import           Data.Either                (isLeft)
+import           Data.List                  (isSuffixOf)
+import           Data.List.Split            (chunksOf)
+import           Data.Maybe                 (mapMaybe)
 
 
 aemoURL :: String
 aemoURL =  "http://www.nemweb.com.au/REPORTS/CURRENT/Dispatch_SCADA/"
 
 
+main :: IO ()
 main = do
 	zipLinks <- joinLinks aemoURL
 	mapM_ print $ take 10 zipLinks
@@ -60,7 +68,7 @@ getARefs url = do
 joinLinks :: String -> IO [String]
 joinLinks url = do
 	links <-getARefs url
-	return . filter (isSuffixOf ".zip") . catMaybes .  map (joinURIs url) $ links
+	return . filter (isSuffixOf ".zip") . mapMaybe (joinURIs url) $ links
 
 
 -- | Takes a base URL and a path relative to that URL and joins them:
@@ -71,8 +79,7 @@ joinURIs :: String -> String -> Maybe String
 joinURIs base relative = do
 	buri <- parseURI         base
 	ruri <- parseURIReference relative
-	joined <- return $ ruri `relativeTo` buri
-	return $ show joined
+	return $ show (ruri `relativeTo` buri)
 
 -- | Given a list of URLs, attempts to fetch them all and pairs the result with
 --   the url of the request. It performs fetches concurrently in groups of 20
