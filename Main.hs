@@ -18,8 +18,9 @@ import qualified Data.Vector as V
 import           Data.ByteString.Lazy.Char8 ()
 import qualified Data.ByteString.Lazy.Char8 as C
 
-import Data.Csv
-import Control.Concurrent.Async
+import           Control.Concurrent.Async
+import           Control.Exception          (SomeException, catch)
+import           Data.Csv
 
 import Network.URI
 
@@ -36,8 +37,10 @@ main = do
 	zipLinks <- joinLinks aemoURL
 	mapM_ print $ take 10 zipLinks
 	putStrLn "..."
-	fetched <- fetchZipFiles zipLinks
-	print fetched
+	fetched <- fetchFiles zipLinks
+	mapM_ print (filter (isLeft . snd) fetched)
+	putStr "Files fetched: "
+	print (length fetched)
 
 
 getARefs :: String -> IO [String]
@@ -64,17 +67,20 @@ joinURIs base relative = do
 	joined <- return $ ruri `relativeTo` buri
 	return $ show joined
 
-fetchZipFiles :: [String] -> IO [(String,Either String ByteString)]
-fetchZipFiles urls = mapM fetch urls where
-	fetch url = do
-		res <- simpleHTTP $ (getRequest url) {rqBody = BSL.empty}
-		if isLeft res
-			then putStrLn $ "Failed to fetch: " ++ url
-			else putStrLn $ "OK: " ++ url
-		return $ (url,) $ case res of
-			Right bs -> Right $ rspBody bs
-			Left err -> Left $ show err
-
+fetchFiles :: [String] -> IO [(String,Either String ByteString)]
+fetchFiles urls =
+	concat <$> mapM (mapConcurrently fetch) (chunksOf 20 urls) where
+	-- mapM fetch urls where
+	-- mapConcurrently fetch urls where
+		fetch url = do
+			res <- simpleHTTP ((getRequest url) {rqBody = BS.empty})
+					`catch` (\e -> return$ Left (ErrorMisc (show (e :: SomeException))))
+			-- if isLeft res
+			-- 	then putStrLn $ "Failed to fetch: " ++ url
+			-- 	else putStrLn $ "OK: " ++ url
+			return $! (url,) $! case res of
+				Right bs -> Right . rspBody $! bs
+				Left err -> Left . show $! err
 
 
 
