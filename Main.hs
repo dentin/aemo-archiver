@@ -31,6 +31,10 @@ import           Data.Maybe                 (fromMaybe, mapMaybe)
 
 import           Codec.Archive.Zip
 
+import           Database.Persist
+
+import           AEMO.Types
+
 
 aemoURL :: String
 aemoURL =  "http://www.nemweb.com.au/REPORTS/CURRENT/Dispatch_SCADA/"
