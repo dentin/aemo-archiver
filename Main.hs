@@ -25,6 +25,7 @@ import           Text.HTML.TagSoup
 import           Control.Applicative
 import           Control.Arrow
 import           Control.DeepSeq
+import           Data.Either                (partitionEithers)
 import           Data.List                  (isSuffixOf)
 import           Data.List.Split            (chunksOf)
 import           Data.Maybe                 (fromMaybe, mapMaybe)
@@ -35,6 +36,8 @@ import           Database.Persist
 
 import           AEMO.Types
 
+
+type URL = String
 
 aemoURL :: String
 aemoURL =  "http://www.nemweb.com.au/REPORTS/CURRENT/Dispatch_SCADA/"
@@ -52,7 +55,7 @@ main = do
 		else putStrLn "Fetch failures:" >> mapM_ print ferrs
 	putStr "Files fetched: "
 	print (length rslts)
-	let (eerrs,extracted) = partition' . extractCSVs $ rslts
+	let (eerrs,extracted) = partitionEithers . extractCSVs $ rslts
 	if extracted `deepseq` null eerrs
 		then return ()
 		else putStrLn "Extraction failures:" >> mapM_ print eerrs
@@ -67,7 +70,7 @@ main = do
 
 
 -- | Given a URL, finds all HTML links on the page
-getARefs :: String -> IO [String]
+getARefs :: URL -> IO [String]
 getARefs url = do
 	ersp <- simpleHTTPSafe (getRequest url)
 	case ersp of
@@ -80,7 +83,7 @@ getARefs url = do
 
 -- | Takes a URL and finds all zip files linked from it.
 -- TODO: handle case insensitive matching of the .zip suffix
-joinLinks :: String -> IO [String]
+joinLinks :: URL -> IO [URL]
 joinLinks url = do
 	links <-getARefs url
 	return . filter (isSuffixOf ".zip") . mapMaybe (joinURIs url) $ links
@@ -98,7 +101,7 @@ joinURIs base relative = do
 
 -- | Given a list of URLs, attempts to fetch them all and pairs the result with
 --   the url of the request. It performs fetches concurrently in groups of 20
-fetchFiles :: [String] -> IO [(String,Either String ByteString)]
+fetchFiles :: [URL] -> IO [(URL,Either String ByteString)]
 fetchFiles urls =
 	concat <$> mapM (fmap force . mapConcurrently fetch) (chunksOf 40 urls) where
 	-- mapM (fmap force . fetch) urls where
@@ -113,20 +116,36 @@ fetchFiles urls =
 				Right bs -> Right . rspBody $! bs
 				Left err -> Left . show $! err
 
-
-extractCSVs :: [(String,ByteString)] -> [(String,Either String ByteString)]
-extractCSVs arcs = map extract arcs where
-	extract (name,bs) =
+-- | Takes URLs and zip files and extracts all CSV files from each zip file
+extractCSVs :: [(URL,ByteString)] -> [Either (URL,String) (String,ByteString)]
+extractCSVs arcs = concatMap extract arcs where
+	extract (url,bs) =
 		let
 			arc = toArchive bs
 			paths = filesInArchive arc
 			csvs = filter (".CSV" `isSuffixOf`) paths
 		in case csvs of
-			[] 		-> (name, Left $ "No CSVs found in " ++ name)
-			(p:_) 	-> (name,) $ case findEntryByPath p arc of
-				Nothing -> Left $ concat ["Could not find ", p, " in archive ", name]
-				Just e -> Right $ fromEntry e
+			[] 		-> [Left $ (url,"No CSVs found in " ++ url)]
+			fs 	-> map extract fs where
+				extract f = case findEntryByPath f arc of
+					Nothing -> Left  (url, concat ["Could not find ", f, " in archive ", url])
+					Just e 	-> Right (f, fromEntry e)
 
+
+-- | Takes URLs and zip files and extracts all CSV files from each zip file
+extractZIPs :: [(URL,ByteString)] -> [Either (URL,String) (String,ByteString)]
+extractZIPs arcs = concatMap extract arcs where
+	extract (url,bs) =
+		let
+			arc = toArchive bs
+			paths = filesInArchive arc
+			csvs = filter (".ZIP" `isSuffixOf`) paths
+		in case csvs of
+			[] 		-> [Left $ (url,"No ZIP files found in " ++ url)]
+			fs 	-> map extract fs where
+				extract f = case findEntryByPath f arc of
+					Nothing -> Left  (url, concat ["Could not find ", f, " in archive ", url])
+					Just e 	-> Right (f, fromEntry e)
 
 partition' :: [(a, Either b c)] -> ([(a,b)], [(a,c)])
 partition' ps = go ps  where
