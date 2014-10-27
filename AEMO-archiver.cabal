@@ -73,7 +73,8 @@ executable AEMO-archiver
                         persistent  >= 2.1      && < 2.2,
                         persistent-template >= 2.1  && < 2.2,
                         persistent-sqlite >= 2.1    && < 2.2,
-                        time        >= 1.4      && < 1.6
+                        time        >= 1.4      && < 1.6,
+                        old-locale  >= 1.0.0.5  && < 1.0.1
 
   -- Directories containing source files.
   -- hs-source-dirs:

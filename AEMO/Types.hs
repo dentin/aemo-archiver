@@ -22,11 +22,13 @@ import Data.Time
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 	PowerStation
-		code Text
+		duid Text
 		name Text
-		UniquePSCode code
+		UniquePSCode duid
+		deriving Show
 	PSDatum
-		code PowerStationId
+		duid Text
 		sampleTime UTCTime
 		kiloWattHours Double
+		deriving Show
 	|]

@@ -12,6 +12,9 @@ import           Data.Vector                (Vector)
 
 import           Data.ByteString.Lazy.Char8 ()
 import qualified Data.ByteString.Lazy.Char8 as C
+import           Data.Text (Text)
+import qualified Data.Text as T
+
 
 import           Control.Concurrent.Async
 import           Control.Exception          (SomeException, catch)
@@ -32,6 +35,8 @@ import           Data.Maybe                 (fromMaybe, mapMaybe)
 
 import           Codec.Archive.Zip
 
+import           Data.Time
+import 			 System.Locale
 import           Database.Persist
 
 import           AEMO.Types
@@ -63,7 +68,7 @@ main = do
 	if extracted `deepseq` null perrs
 		then return ()
 		else putStrLn "Parsing failures:" >> mapM_ print perrs
-	mapM_ print (take 1 parsed)
+	print (last parsed)
 	return ()
 
 
@@ -100,7 +105,7 @@ joinURIs base relative = do
 	return $ show (ruri `relativeTo` buri)
 
 -- | Given a list of URLs, attempts to fetch them all and pairs the result with
---   the url of the request. It performs fetches concurrently in groups of 20
+--   the url of the request. It performs fetches concurrently in groups of 40
 fetchFiles :: [URL] -> IO [(URL,Either String ByteString)]
 fetchFiles urls =
 	concat <$> mapM (fmap force . mapConcurrently fetch) (chunksOf 40 urls) where
@@ -126,13 +131,13 @@ extractCSVs arcs = concatMap extract arcs where
 			csvs = filter (".CSV" `isSuffixOf`) paths
 		in case csvs of
 			[] 		-> [Left $ (url,"No CSVs found in " ++ url)]
-			fs 	-> map extract fs where
-				extract f = case findEntryByPath f arc of
+			fs 	-> map ext fs where
+				ext f = case findEntryByPath f arc of
 					Nothing -> Left  (url, concat ["Could not find ", f, " in archive ", url])
 					Just e 	-> Right (f, fromEntry e)
 
 
--- | Takes URLs and zip files and extracts all CSV files from each zip file
+-- | Takes URLs and zip files and extracts all zip files from each zip file
 extractZIPs :: [(URL,ByteString)] -> [Either (URL,String) (String,ByteString)]
 extractZIPs arcs = concatMap extract arcs where
 	extract (url,bs) =
@@ -142,10 +147,35 @@ extractZIPs arcs = concatMap extract arcs where
 			csvs = filter (".ZIP" `isSuffixOf`) paths
 		in case csvs of
 			[] 		-> [Left $ (url,"No ZIP files found in " ++ url)]
-			fs 	-> map extract fs where
-				extract f = case findEntryByPath f arc of
+			fs 	-> map ext fs where
+				ext f = case findEntryByPath f arc of
 					Nothing -> Left  (url, concat ["Could not find ", f, " in archive ", url])
 					Just e 	-> Right (f, fromEntry e)
+
+-- | (Will be) used to parse the AEMO CSV files which contain daily data
+parseAEMO :: ByteString -> Either String (Vector (String, String, String, Int, String, String, Double))
+parseAEMO file =
+	-- Removes the beginning and end lines of the file
+	-- AEMO data files have two headers and a footer which causes issues when parsing
+	-- Using intercalate instead of unlines to ensure that new lines are the same
+	-- as the original document
+	let trimmed = C.intercalate "\r\n" . init . drop 1 . C.lines $ file
+	in decode HasHeader trimmed
+
+-- | Takes a tuple parsed from the AEMO CSV data and produces a PSDatum. Time of recording is
+-- parsed by appending the +1000 timezone to ensure the correct UTC time is parsed.
+csvTupleToPSDatum :: (String, String, String, Int, String, String, Double) -> Either String PSDatum
+csvTupleToPSDatum (_D,_DISPATCH,_UNIT_SCADA,_1, dateStr, duid, val) = do
+	let mzt = parseTime defaultTimeLocale "%0Y/%m/%d %H:%M:%S%z" (dateStr ++ "+1000") :: Maybe ZonedTime
+	case mzt of
+		Nothing 	-> Left $ "Failed to parse time \"" ++ dateStr ++ "\""
+		Just zt 	->
+			let utc = localTimeToUTC (zonedTimeZone zt) (zonedTimeToLocalTime zt)
+			in Right $ PSDatum (T.pack duid) utc val
+
+
+
+
 
 partition' :: [(a, Either b c)] -> ([(a,b)], [(a,c)])
 partition' ps = go ps  where
@@ -171,14 +201,6 @@ simpleHTTPSafe r = do
 
 
 
--- | (Will be) used to parse the AEMO CSV files which contain daily data
-parseAEMO :: ByteString -> Either String (Vector (String, String, String, Int, String, String, Double))
-parseAEMO file =
-	-- Removes the beginning and end lines of the file
-	-- AEMO data files have two headers and a footer which causes issues when parsing
-	-- Using intercalate instead of unlines to ensure that new lines are the same
-	-- as the original document
-	let trimmed = C.intercalate "\r\n" . init . drop 1 . C.lines $ file
-	in decode HasHeader trimmed
+
 
 
