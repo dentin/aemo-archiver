@@ -10,14 +10,11 @@
 
 module AEMO.Types where
 
-import           Database.Persist
-import           Database.Persist.Sqlite
-import 			 Database.Persist.TH
+import           Database.Persist.TH
 
-import           Data.Text (Text)
-import qualified Data.Text as T
+import           Data.Text           (Text)
 
-import Data.Time
+import           Data.Time
 
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
@@ -26,9 +23,21 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 		name Text
 		UniquePSCode duid
 		deriving Show
+
+	AemoCsvFile
+		fileName Text
+		timeInserted UTCTime default=CURRENT_TIME
+		recordsInserted Int
+		UniqueAEMOFile fileName
+
+	AemoZipFile
+		fileName Text
+
 	PSDatum
 		duid Text
 		sampleTime UTCTime
 		kiloWattHours Double
+		file AemoCsvFileId
 		deriving Show
+
 	|]
