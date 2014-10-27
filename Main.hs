@@ -1,45 +1,46 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}
 
 module Main where
 
-import           Data.ByteString.Lazy       (ByteString)
-import qualified Data.ByteString.Lazy       as BSL
+import           Data.ByteString.Lazy         (ByteString)
+import qualified Data.ByteString.Lazy         as BSL
 
 
-import           Data.Vector                (Vector)
-import qualified Data.Vector                as V
+import           Data.Vector                  (Vector)
+import qualified Data.Vector                  as V
 
-import           Data.ByteString.Lazy.Char8 ()
-import qualified Data.ByteString.Lazy.Char8 as C
-import           Data.HashSet               (HashSet)
-import qualified Data.HashSet               as S
-import           Data.Text                  (Text)
-import qualified Data.Text                  as T
+import qualified Data.ByteString.Lazy.Char8   as C
+import qualified Data.HashSet                 as S
+import           Data.Text                    (Text)
+import qualified Data.Text                    as T
 
 
 
 import           Control.Concurrent.Async
-import           Control.Exception          (SomeException, catch)
+import           Control.Exception            (SomeException, catch)
 import           Data.Csv
 
 import           Network.HTTP
-import           Network.Stream             (ConnError (..), Result)
+import           Network.Stream               (ConnError (..), Result)
 import           Network.URI
-import           System.FilePath.Posix
 import           Text.HTML.TagSoup
 
 import           Control.Applicative
 import           Control.Arrow
 import           Control.DeepSeq
-import           Control.Monad              (forM_)
-import           Data.Either                (partitionEithers)
-import           Data.List                  (isSuffixOf)
-import           Data.List.Split            (chunksOf)
-import           Data.Maybe                 (fromMaybe, mapMaybe)
+import           Control.Monad                (forM_)
+import           Data.Either                  (partitionEithers)
+import           Data.List                    (isSuffixOf)
+import           Data.List.Split              (chunksOf)
+import           Data.Maybe                   (fromMaybe, mapMaybe)
 
 import           Codec.Archive.Zip
 
+import           Control.Monad.IO.Class       (liftIO)
+import           Control.Monad.Logger         (NoLoggingT)
+import           Control.Monad.Trans.Resource (ResourceT)
 import           Data.Time
 import           Database.Persist
 import           Database.Persist.Sqlite
@@ -58,6 +59,7 @@ aemoURL =  "http://www.nemweb.com.au/REPORTS/CURRENT/Dispatch_SCADA/"
 dbPath :: Text
 dbPath = "AEMO.sqlite"
 
+runDB :: SqlPersistT (NoLoggingT (ResourceT IO)) a -> IO a
 runDB = runSqlite dbPath
 
 main :: IO ()
@@ -149,14 +151,9 @@ joinURIs base relative = do
 fetchFiles :: [URL] -> IO [(URL,Either String ByteString)]
 fetchFiles urls =
     concat <$> mapM (fmap force . mapConcurrently fetch) (chunksOf 40 urls) where
-    -- mapM (fmap force . fetch) urls where
-    -- mapConcurrently fetch urls where
         fetch url = do
             res <- simpleHTTPSafe ((getRequest url) {rqBody = BSL.empty})
                     `catch` (\e -> return$ Left (ErrorMisc (show (e :: SomeException))))
-            -- if isLeft res
-            --  then putStrLn $ "Failed to fetch: " ++ url
-            --  else putStrLn $ "OK: " ++ url
             return $! (url,) $! case res of
                 Right bs -> Right . rspBody $! bs
                 Left err -> Left . show $! err
@@ -177,12 +174,11 @@ extractCSVs arcs = concatMap extract arcs where
                     Just e  -> Right (f, fromEntry e)
 
 
--- | Takes URLs and zip files and extracts all zip files from each zip file
+-- | Takes URLs and zip files and extracts all zip files from each given zip file
 extractZIPs :: [(URL,ByteString)] -> [Either (URL,String) (String,ByteString)]
 extractZIPs arcs = concatMap extract arcs where
     extract (url,bs) =
-        let
-            arc = toArchive bs
+        let arc = toArchive bs
             paths = filesInArchive arc
             csvs = filter (".ZIP" `isSuffixOf`) paths
         in case csvs of
@@ -210,16 +206,16 @@ csvTupleToPSDatum fid (_D,_DISPATCH,_UNIT_SCADA,_1, dateStr, duid, val) = do
     case mzt of
         Nothing     -> Left $ "Failed to parse time \"" ++ dateStr ++ "\""
         Just zt     ->
-            let utc = zonedTimeToUTC zt
-            in Right $ PSDatum (T.pack duid) utc val fid
+            let utctime = zonedTimeToUTC zt
+            in Right $ PSDatum (T.pack duid) utctime val fid
 
 
 
--- insertCSV :: ZonedTime -> (String, Vector CSVRow) -> SqlPersistT (NoLoggingT (ResourceT m)) (Key AEMOFile)
+insertCSV :: ZonedTime -> (String, Vector CSVRow) -> SqlPersistT (NoLoggingT (ResourceT IO)) ()
 insertCSV now (file,vec) = do
+    -- start <- liftIO getZonedTime
     fid <- insert $ AemoCsvFile (T.pack file) (zonedTimeToUTC now) (V.length vec)
     V.mapM_ (ins fid) vec
-    -- now <- liftIO getZonedTime
     where
         ins fid r = case csvTupleToPSDatum fid r of
             Left str -> fail str
