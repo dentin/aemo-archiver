@@ -46,6 +46,10 @@ import           Database.Persist
 import           Database.Persist.Sqlite
 import           System.Locale
 
+import           Control.Concurrent
+import           Data.Time.Units
+import           System.IO
+
 import           AEMO.Types
 
 
@@ -64,54 +68,76 @@ runDB = runSqlite dbPath
 
 main :: IO ()
 main = do
+    hSetBuffering stdout NoBuffering
+    (tid,mv) <- fetchDaily5mActualLoad `every` (10 :: Second)
+
+    takeMVar mv
+
+fetchDaily5mActualLoad :: IO ()
+fetchDaily5mActualLoad = do
     -- Extract all zip files from AEMO website
     zipLinks <- joinLinks aemoURL
 
     -- Get the names of all known zip files
-    knownFileNames <- runDB $ do
+    knownZipFiles <- runDB $ do
         runMigration migrateAll
 
         es <- selectList [] []
         return $ map (aemoZipFileFileName . entityVal) es
 
     -- Filter URLs for only those that haven't been inserted
-    let seenfiles = S.fromList knownFileNames
+    let seenfiles = S.fromList knownZipFiles
         unseen = filter (\u -> not $ S.member (T.pack u) seenfiles) $ zipLinks
 
-    unless (null unseen) $ do
-        putStrLn "Fetching new files:"
-        mapM_ print unseen
+    if null unseen
+        then putStr "."
+        else do
+            putStrLn "\nFetching new files:"
+            mapM_ print unseen
 
-    -- Fetch the contents of the zip files
-    fetched <- fetchFiles unseen
-    let (ferrs,rslts) = partition' fetched
-    if rslts `deepseq` null ferrs
-        then return ()
-        else putStrLn "Fetch failures:" >> mapM_ print ferrs
-    putStr "Files fetched: "
-    print (length rslts)
+            -- Fetch the contents of the zip files
+            fetched <- fetchFiles unseen
+            let (ferrs,rslts) = partition' fetched
+            if rslts `deepseq` null ferrs
+                then return ()
+                else putStrLn "Fetch failures:" >> mapM_ print ferrs
+            unless (null rslts) $ do
+                putStr "Files fetched: "
+                print (length rslts)
 
-    forM_ rslts $ \(url,_) -> do
-        runDB $ insert $ AemoZipFile (T.pack url)
+            forM_ rslts $ \(url,_) -> do
+                runDB $ insert $ AemoZipFile (T.pack url)
 
-    -- Extract data from the CSVs
-    let (eerrs,extracted) = partitionEithers . extractCSVs $ rslts
-    if extracted `deepseq` null eerrs
-        then return ()
-        else putStrLn "Extraction failures:" >> mapM_ print eerrs
+            -- Extract data from the CSVs
+            let (eerrs,extracted) = partitionEithers . extractCSVs $ rslts
+            if extracted `deepseq` null eerrs
+                then return ()
+                else putStrLn "Extraction failures:" >> mapM_ print eerrs
 
-    -- Parse the CSV files into database types
-    let (perrs, parsed) = partition' . map (second parseAEMO) $ extracted
-    if parsed `deepseq` null perrs
-        then return ()
-        else putStrLn "Parsing failures:" >> mapM_ print perrs
+            -- Parse the CSV files into database types
+            let (perrs, parsed) = partition' . map (second parseAEMO) $ extracted
+            if parsed `deepseq` null perrs
+                then return ()
+                else putStrLn "Parsing failures:" >> mapM_ print perrs
 
+            -- Insert files into database
+            mapM_ (runDB . insertCSV) parsed
 
-    -- Insert files into database
-    mapM_ (runDB . insertCSV) parsed
+-- | Run an event every n seconds
+every :: TimeUnit a => IO () -> a -> IO (ThreadId,MVar ())
+every act t = do
+    now <- getCPUTimeWithUnit :: IO Microsecond
+    mv <- newEmptyMVar
+    let ms = convertUnit t :: Microsecond
 
-    return ()
-
+    tid <- forkIO (run now ms >> putMVar mv ())
+    return (tid, mv)
+    where
+        run n ms = do
+            let next = addTime n ms :: Microsecond
+            threadDelay (fromIntegral next)
+            act
+            run next ms
 
 
 

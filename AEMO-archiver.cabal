@@ -80,7 +80,8 @@ executable AEMO-archiver
                         monad-logger  >= 0.3.7    && < 0.4,
                         resourcet     >= 1.1    && < 1.2,
                         monad-control >= 0.3    && < 0.4,
-                        transformers  >= 0.3    && < 0.4
+                        transformers  >= 0.3    && < 0.4,
+                        time-units    >= 1.0    && < 1.1
 
   -- Directories containing source files.
   -- hs-source-dirs:
