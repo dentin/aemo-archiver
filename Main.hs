@@ -30,7 +30,7 @@ import           Text.HTML.TagSoup
 import           Control.Applicative
 import           Control.Arrow
 import           Control.DeepSeq
-import           Control.Monad                (forM_)
+import           Control.Monad                (forM_, unless)
 import           Data.Either                  (partitionEithers)
 import           Data.List                    (isSuffixOf)
 import           Data.List.Split              (chunksOf)
@@ -78,8 +78,9 @@ main = do
     let seenfiles = S.fromList knownFileNames
         unseen = filter (\u -> not $ S.member (T.pack u) seenfiles) $ zipLinks
 
-    putStrLn "Fetching new files:"
-    mapM_ print unseen
+    unless (null unseen) $ do
+        putStrLn "Fetching new files:"
+        mapM_ print unseen
 
     -- Fetch the contents of the zip files
     fetched <- fetchFiles unseen
@@ -101,15 +102,13 @@ main = do
 
     -- Parse the CSV files into database types
     let (perrs, parsed) = partition' . map (second parseAEMO) $ extracted
-    if extracted `deepseq` null perrs
+    if parsed `deepseq` null perrs
         then return ()
         else putStrLn "Parsing failures:" >> mapM_ print perrs
 
 
     -- Insert files into database
-    forM_ parsed $ \p -> do
-        now <- getZonedTime
-        runDB $ insertCSV now p
+    mapM_ (runDB . insertCSV) parsed
 
     return ()
 
@@ -211,11 +210,12 @@ csvTupleToPSDatum fid (_D,_DISPATCH,_UNIT_SCADA,_1, dateStr, duid, val) = do
 
 
 
-insertCSV :: ZonedTime -> (String, Vector CSVRow) -> SqlPersistT (NoLoggingT (ResourceT IO)) ()
-insertCSV now (file,vec) = do
-    -- start <- liftIO getZonedTime
-    fid <- insert $ AemoCsvFile (T.pack file) (zonedTimeToUTC now) (V.length vec)
+insertCSV :: (String, Vector CSVRow) -> SqlPersistT (NoLoggingT (ResourceT IO)) ()
+insertCSV (file,vec) = do
+    fid <- insert $ AemoCsvFile (T.pack file) Nothing (V.length vec)
     V.mapM_ (ins fid) vec
+    completed <- liftIO getZonedTime
+    update fid [AemoCsvFileTimeInserted =. Just (zonedTimeToUTC completed)]
     where
         ins fid r = case csvTupleToPSDatum fid r of
             Left str -> fail str

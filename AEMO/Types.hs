@@ -26,7 +26,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 
 	AemoCsvFile
 		fileName Text
-		timeInserted UTCTime default=CURRENT_TIME
+		timeInserted UTCTime Maybe
 		recordsInserted Int
 		UniqueAEMOFile fileName
 
