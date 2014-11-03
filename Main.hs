@@ -57,8 +57,6 @@ type URL = String
 
 type CSVRow = (String, String, String, Int, String, String, Double)
 
-aemoURL :: String
-aemoURL =  "http://www.nemweb.com.au/REPORTS/CURRENT/Dispatch_SCADA/"
 
 dbPath :: Text
 dbPath = "AEMO.sqlite"
@@ -73,10 +71,13 @@ main = do
 
     takeMVar mv
 
+aemo5mPSURL :: URL
+aemo5mPSURL =  "http://www.nemweb.com.au/REPORTS/CURRENT/Dispatch_SCADA/"
+
 fetchDaily5mActualLoad :: IO ()
 fetchDaily5mActualLoad = do
     -- Extract all zip files from AEMO website
-    zipLinks <- joinLinks aemoURL
+    zipLinks <- joinLinks aemo5mPSURL
 
     -- Get the names of all known zip files
     knownZipFiles <- runDB $ do
