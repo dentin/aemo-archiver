@@ -19,10 +19,23 @@ import           Data.Time
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 	PowerStation
-		duid Text
-		name Text
-		UniquePSCode duid
-		deriving Show
+		participant				Text
+		stationName				Text
+		region					Text
+		dispatchType			Text
+		category				Text
+		classification			Text
+		fuelSourcePrimary		Text Maybe
+		fuelSourceDescriptor	Text Maybe
+		techTypePrimary			Text Maybe
+		techTypeDescriptor		Text Maybe
+		physicalUnitNo			Text Maybe
+		unitSizeMW				Text
+		aggregation				Bool
+		duid					Text
+		regCapMW				Double Maybe
+		maxCapMW				Double Maybe
+		maxROCPerMin			Double Maybe
 
 	AemoCsvFile
 		fileName Text
