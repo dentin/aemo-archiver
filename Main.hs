@@ -67,9 +67,7 @@ runDB = runSqlite dbPath
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
-    (_tid,mv) <- fetchDaily5mActualLoad `every` (5 :: Minute)
-
-    takeMVar mv
+    fetchDaily5mActualLoad
 
 aemo5mPSURL :: URL
 aemo5mPSURL =  "http://www.nemweb.com.au/REPORTS/CURRENT/Dispatch_SCADA/"
@@ -122,32 +120,6 @@ fetchDaily5mActualLoad = do
 
         -- Insert files into database
         mapM_ (runDB . insertCSV) parsed
-
--- | Run an event every n time units. Does not guarantee that it will be run
--- each occurance of n time units if the action takes longer than n time to run.
--- It will run each action at the next block of n time (it can miss deadlines).
-every :: TimeUnit a => IO () -> a -> IO (ThreadId,MVar ())
-every act t = do
-    mv <- newEmptyMVar
-
-    now <- getCurrentTime
-    let ms = toMicroseconds t
-        ps = ms * 1000000
-        d = toEnum . fromIntegral $ ps :: NominalDiffTime
-        activations = iterate (addUTCTime d) now
-
-    tid <- forkIO (run activations >> putMVar mv ())
-    return (tid, mv)
-    where
-        run :: [UTCTime] -> IO ()
-        run ts = do
-            act
-            now <- getCurrentTime
-            case dropWhile (<= now) ts of
-                (next:ts') ->
-                    let delay = fromEnum (diffUTCTime next now) `div` 1000000
-                    in threadDelay delay >> run ts'
-
 
 
 -- | Given a URL, finds all HTML links on the page
