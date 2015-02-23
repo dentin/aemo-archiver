@@ -103,10 +103,7 @@ fetchDaily5mActualLoad = do
             putStr "Files fetched: "
             print (length rslts)
 
-        forM_ rslts $ \(url,_) -> do
-            runDB $ insert $ AemoZipFile (T.pack url)
-
-        -- Extract data from the CSVs
+        -- Extract CSVs from the zip files
         let (eerrs,extracted) = partitionEithers . extractCSVs $ rslts
         if extracted `deepseq` null eerrs
             then return ()
@@ -118,8 +115,11 @@ fetchDaily5mActualLoad = do
             then return ()
             else putStrLn "Parsing failures:" >> mapM_ print perrs
 
-        -- Insert files into database
+        -- Insert data into database
         mapM_ (runDB . insertCSV) parsed
+        -- Insert zip file URLs into database
+        forM_ rslts $ \(url,_) -> do
+            runDB $ insert $ AemoZipFile (T.pack url)
 
 
 -- | Given a URL, finds all HTML links on the page
