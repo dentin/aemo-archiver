@@ -31,6 +31,7 @@ import           Control.Applicative
 import           Control.Arrow
 import           Control.DeepSeq
 import           Control.Monad                (forM_, unless)
+import           Data.Char                    (toLower)
 import           Data.Either                  (partitionEithers)
 import           Data.List                    (isSuffixOf)
 import           Data.List.Split              (chunksOf)
@@ -72,12 +73,16 @@ main = do
 aemo5mPSURL :: URL
 aemo5mPSURL =  "http://www.nemweb.com.au/REPORTS/CURRENT/Dispatch_SCADA/"
 
+aemoPSArchiveURL :: URL
+aemoPSArchiveURL =  "http://www.nemweb.com.au/REPORTS/ARCHIVE/Dispatch_SCADA/"
+
+
 fetchDaily5mActualLoad :: IO ()
 fetchDaily5mActualLoad = do
-    -- Extract all zip files from AEMO website
+    -- Get the names of all zip files from AEMO website
     zipLinks <- joinLinks aemo5mPSURL
 
-    -- Get the names of all known zip files
+    -- Get the names of all known zip files in the database
     knownZipFiles <- runDB $ do
         runMigration migrateAll
 
@@ -104,7 +109,7 @@ fetchDaily5mActualLoad = do
             print (length rslts)
 
         -- Extract CSVs from the zip files
-        let (eerrs,extracted) = partitionEithers . extractCSVs $ rslts
+        let (eerrs,extracted) = partitionEithers . extractFiles ".csv" $ rslts
         if extracted `deepseq` null eerrs
             then return ()
             else putStrLn "Extraction failures:" >> mapM_ print eerrs
@@ -120,6 +125,60 @@ fetchDaily5mActualLoad = do
         -- Insert zip file URLs into database
         forM_ rslts $ \(url,_) -> do
             runDB $ insert $ AemoZipFile (T.pack url)
+        putStrLn ("Inserted " ++ show (length parsed) ++ " CSV files.")
+
+
+fetchArchiveActualLoad :: IO ()
+fetchArchiveActualLoad = do
+    -- Get the names of all archive zip files from AEMO website
+    zipLinks <- joinLinks aemoPSArchiveURL
+
+    -- Get the names of all known zip files in the database
+    knownZipFiles <- runDB $ do
+        runMigration migrateAll
+
+        es <- selectList [] []
+        return $ map (aemoZipFileFileName . entityVal) es
+
+    -- Filter URLs for only those that haven't been inserted
+    let seenfiles = S.fromList knownZipFiles
+        unseen = filter (\u -> not $ S.member (T.pack u) seenfiles) $ zipLinks
+
+    -- We're done if there aren't any files we haven't loaded yet
+    unless (null unseen) $ do
+        putStrLn "\nFetching new files:"
+        mapM_ putStrLn unseen
+
+        -- Fetch the contents of the zip files
+        fetched <- fetchFiles unseen
+        let (ferrs,rslts) = partition' fetched
+        if rslts `deepseq` null ferrs
+            then return ()
+            else putStrLn "Fetch failures:" >> mapM_ print ferrs
+        unless (null rslts) $ do
+            putStr "Files fetched: "
+            print (length rslts)
+
+        -- TODO: extract zips from the archive zip files
+
+        -- Extract CSVs from the zip files
+        let (eerrs,extracted) = partitionEithers . extractFiles ".csv" $ rslts
+        if extracted `deepseq` null eerrs
+            then return ()
+            else putStrLn "Extraction failures:" >> mapM_ print eerrs
+
+        -- Parse the CSV files into database types
+        let (perrs, parsed) = partition' . map (second parseAEMO) $ extracted
+        if parsed `deepseq` null perrs
+            then return ()
+            else putStrLn "Parsing failures:" >> mapM_ print perrs
+
+        -- Insert data into database
+        mapM_ (runDB . insertCSV) parsed
+        -- Insert zip file URLs into database
+        forM_ rslts $ \(url,_) -> do
+            runDB $ insert $ AemoZipFile (T.pack url)
+        putStrLn ("Inserted " ++ show (length parsed) ++ " CSV files.")
 
 
 -- | Given a URL, finds all HTML links on the page
@@ -134,12 +193,13 @@ getARefs url = do
                           (key,val) <- attrs, key `elem` ["href","HREF"]
                           ]
 
+
 -- | Takes a URL and finds all zip files linked from it.
 -- TODO: handle case insensitive matching of the .zip suffix
 joinLinks :: URL -> IO [URL]
 joinLinks url = do
     links <-getARefs url
-    return . filter (isSuffixOf ".zip") . mapMaybe (joinURIs url) $ links
+    return . filter (isSuffixOf ".zip" . map toLower) . mapMaybe (joinURIs url) $ links
 
 
 -- | Takes a base URL and a path relative to that URL and joins them:
@@ -151,6 +211,7 @@ joinURIs base relative = do
     buri <- parseURI         base
     ruri <- parseURIReference relative
     return $ show (ruri `relativeTo` buri)
+
 
 -- | Given a list of URLs, attempts to fetch them all and pairs the result with
 --   the url of the request. It performs fetches concurrently in groups of 40
@@ -164,35 +225,22 @@ fetchFiles urls =
                 Right bs -> Right . rspBody $! bs
                 Left err -> Left . show $! err
 
+
 -- | Takes URLs and zip files and extracts all CSV files from each zip file
-extractCSVs :: [(URL,ByteString)] -> [Either (URL,String) (String,ByteString)]
-extractCSVs arcs = concatMap extract arcs where
+extractFiles :: String -> [(URL,ByteString)] -> [Either (URL,String) (String,ByteString)]
+extractFiles suf arcs = concatMap extract arcs where
     extract (url,bs) =
         let
             arc = toArchive bs
             paths = filesInArchive arc
-            csvs = filter (".CSV" `isSuffixOf`) paths
+            csvs = filter (isSuffixOf suf . map toLower) paths
         in case csvs of
-            []      -> [Left $ (url,"No CSVs found in " ++ url)]
+            []      -> [Left $ (url,"No " ++ suf ++ " found in " ++ url)]
             fs  -> map ext fs where
                 ext f = case findEntryByPath f arc of
                     Nothing -> Left  (url, concat ["Could not find ", f, " in archive ", url])
                     Just e  -> Right (f, fromEntry e)
 
-
--- | Takes URLs and zip files and extracts all zip files from each given zip file
-extractZIPs :: [(URL,ByteString)] -> [Either (URL,String) (String,ByteString)]
-extractZIPs arcs = concatMap extract arcs where
-    extract (url,bs) =
-        let arc = toArchive bs
-            paths = filesInArchive arc
-            csvs = filter (".ZIP" `isSuffixOf`) paths
-        in case csvs of
-            []      -> [Left $ (url,"No ZIP files found in " ++ url)]
-            fs  -> map ext fs where
-                ext f = case findEntryByPath f arc of
-                    Nothing -> Left  (url, concat ["Could not find ", f, " in archive ", url])
-                    Just e  -> Right (f, fromEntry e)
 
 -- | (Will be) used to parse the AEMO CSV files which contain daily data
 parseAEMO :: ByteString -> Either String (Vector CSVRow)
@@ -203,6 +251,7 @@ parseAEMO file =
     -- as the original document
     let trimmed = C.intercalate "\r\n" . init . drop 1 . C.lines $ file
     in decode HasHeader trimmed
+
 
 -- | Takes a tuple parsed from the AEMO CSV data and produces a PSDatum. Time of recording is
 -- parsed by appending the +1000 timezone to ensure the correct UTC time is parsed.
@@ -216,7 +265,6 @@ csvTupleToPSDatum fid (_D,_DISPATCH,_UNIT_SCADA,_1, dateStr, duid, val) = do
             in Right $ PSDatum (T.pack duid) utctime val fid
 
 
-
 insertCSV :: (String, Vector CSVRow) -> SqlPersistT (NoLoggingT (ResourceT IO)) ()
 insertCSV (file,vec) = do
     fid <- insert $ AemoCsvFile (T.pack file) Nothing (V.length vec)
@@ -227,8 +275,6 @@ insertCSV (file,vec) = do
         ins fid r = case csvTupleToPSDatum fid r of
             Left str -> fail str
             Right psd -> insert psd
-
-
 
 
 partition' :: [(a, Either b c)] -> ([(a,b)], [(a,c)])
