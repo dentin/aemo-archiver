@@ -13,7 +13,7 @@ import qualified Data.Vector                  as V
 
 import qualified Data.ByteString.Lazy.Char8   as C
 import qualified Data.HashSet                 as S
-import           Data.Text                    (Text)
+import           Data.Text                    (Text, unpack)
 import qualified Data.Text                    as T
 
 
@@ -49,6 +49,7 @@ import           System.Locale
 
 import           Control.Concurrent
 import           Data.Time.Units
+import           System.Directory             (doesFileExist)
 import           System.IO
 
 import           AEMO.Types
@@ -62,19 +63,23 @@ type CSVRow = (String, String, String, Int, String, String, Double)
 dbPath :: Text
 dbPath = "AEMO.sqlite"
 
-runDB :: SqlPersistT (NoLoggingT (ResourceT IO)) a -> IO a
-runDB = runSqlite dbPath
-
-main :: IO ()
-main = do
-    hSetBuffering stdout NoBuffering
-    fetchDaily5mActualLoad
-
 aemo5mPSURL :: URL
 aemo5mPSURL =  "http://www.nemweb.com.au/REPORTS/CURRENT/Dispatch_SCADA/"
 
 aemoPSArchiveURL :: URL
 aemoPSArchiveURL =  "http://www.nemweb.com.au/REPORTS/ARCHIVE/Dispatch_SCADA/"
+
+
+runDB :: SqlPersistT (NoLoggingT (ResourceT IO)) a -> IO a
+runDB = runSqlite dbPath
+
+
+main :: IO ()
+main = do
+    hSetBuffering stdout NoBuffering
+    dbExists <- doesFileExist (unpack dbPath)
+    unless (dbExists) fetchArchiveActualLoad
+    fetchDaily5mActualLoad
 
 
 fetchDaily5mActualLoad :: IO ()
@@ -109,7 +114,7 @@ fetchDaily5mActualLoad = do
             print (length rslts)
 
         -- Extract CSVs from the zip files
-        let (eerrs,extracted) = partitionEithers . extractFiles ".csv" $ rslts
+        let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ rslts
         if extracted `deepseq` null eerrs
             then return ()
             else putStrLn "Extraction failures:" >> mapM_ print eerrs
@@ -159,10 +164,14 @@ fetchArchiveActualLoad = do
             putStr "Files fetched: "
             print (length rslts)
 
-        -- TODO: extract zips from the archive zip files
+        -- Extract zips from the archive zip files
+        let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ rslts
+        if zextracted `deepseq` null zeerrs
+            then return ()
+            else putStrLn "Extraction failures:" >> mapM_ print zeerrs
 
         -- Extract CSVs from the zip files
-        let (eerrs,extracted) = partitionEithers . extractFiles ".csv" $ rslts
+        let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ zextracted
         if extracted `deepseq` null eerrs
             then return ()
             else putStrLn "Extraction failures:" >> mapM_ print eerrs
