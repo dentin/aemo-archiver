@@ -29,7 +29,7 @@ import           Text.HTML.TagSoup
 
 import           Control.Applicative
 import           Control.Arrow
-import           Control.DeepSeq
+import           Control.DeepSeq              (NFData, force)
 import           Control.Monad                (forM_, unless)
 import           Data.Char                    (toLower)
 import           Data.Either                  (partitionEithers)
@@ -57,7 +57,7 @@ import           AEMO.Types
 
 type URL = String
 
-type CSVRow = (String, String, String, Int, String, String, Double)
+type CSVRow = ((), (), (), (), String, String, Double)
 
 
 dbPath :: Text
@@ -106,7 +106,7 @@ fetchDaily5mActualLoad = do
         -- Fetch the contents of the zip files
         fetched <- fetchFiles unseen
         let (ferrs,rslts) = partition' fetched
-        if rslts `deepseq` null ferrs
+        if rslts `seq` null ferrs
             then return ()
             else putStrLn "Fetch failures:" >> mapM_ print ferrs
         unless (null rslts) $ do
@@ -115,14 +115,14 @@ fetchDaily5mActualLoad = do
 
         -- Extract CSVs from the zip files
         let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ rslts
-        if extracted `deepseq` null eerrs
-            then return ()
+        if extracted `seq` null eerrs
+            then putStrLn ("Extracted " ++ show (length extracted) ++ " csv files.")
             else putStrLn "Extraction failures:" >> mapM_ print eerrs
 
         -- Parse the CSV files into database types
         let (perrs, parsed) = partition' . map (second parseAEMO) $ extracted
-        if parsed `deepseq` null perrs
-            then return ()
+        if parsed `seq` null perrs
+            then putStrLn ("Parsed " ++ show (length parsed) ++ " csv files.")
             else putStrLn "Parsing failures:" >> mapM_ print perrs
 
         -- Insert data into database
@@ -130,7 +130,7 @@ fetchDaily5mActualLoad = do
         -- Insert zip file URLs into database
         forM_ rslts $ \(url,_) -> do
             runDB $ insert $ AemoZipFile (T.pack url)
-        putStrLn ("Inserted " ++ show (length parsed) ++ " CSV files.")
+        putStrLn ("Inserted data from " ++ show (length parsed) ++ " CSV files.")
 
 
 fetchArchiveActualLoad :: IO ()
@@ -157,7 +157,7 @@ fetchArchiveActualLoad = do
         -- Fetch the contents of the zip files
         fetched <- fetchFiles unseen
         let (ferrs,rslts) = partition' fetched
-        if rslts `deepseq` null ferrs
+        if rslts `seq` null ferrs
             then return ()
             else putStrLn "Fetch failures:" >> mapM_ print ferrs
         unless (null rslts) $ do
@@ -166,20 +166,20 @@ fetchArchiveActualLoad = do
 
         -- Extract zips from the archive zip files
         let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ rslts
-        if zextracted `deepseq` null zeerrs
-            then return ()
+        if zextracted `seq` null zeerrs
+            then putStrLn ("Extracted " ++ show (length zextracted) ++ " archive zip files.")
             else putStrLn "Extraction failures:" >> mapM_ print zeerrs
 
         -- Extract CSVs from the zip files
         let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ zextracted
-        if extracted `deepseq` null eerrs
-            then return ()
+        if extracted `seq` null eerrs
+            then putStrLn ("Extracted " ++ show (length extracted) ++ " csv files.")
             else putStrLn "Extraction failures:" >> mapM_ print eerrs
 
         -- Parse the CSV files into database types
         let (perrs, parsed) = partition' . map (second parseAEMO) $ extracted
-        if parsed `deepseq` null perrs
-            then return ()
+        if parsed `seq` null perrs
+            then putStrLn ("Parsed " ++ show (length parsed) ++ " csv files.")
             else putStrLn "Parsing failures:" >> mapM_ print perrs
 
         -- Insert data into database
@@ -187,7 +187,7 @@ fetchArchiveActualLoad = do
         -- Insert zip file URLs into database
         forM_ rslts $ \(url,_) -> do
             runDB $ insert $ AemoZipFile (T.pack url)
-        putStrLn ("Inserted " ++ show (length parsed) ++ " CSV files.")
+        putStrLn ("Inserted data from " ++ show (length parsed) ++ " CSV files.")
 
 
 -- | Given a URL, finds all HTML links on the page
@@ -265,7 +265,8 @@ parseAEMO file =
 -- | Takes a tuple parsed from the AEMO CSV data and produces a PSDatum. Time of recording is
 -- parsed by appending the +1000 timezone to ensure the correct UTC time is parsed.
 csvTupleToPSDatum :: AemoCsvFileId -> CSVRow -> Either String PSDatum
-csvTupleToPSDatum fid (_D,_DISPATCH,_UNIT_SCADA,_1, dateStr, duid, val) = do
+csvTupleToPSDatum fid (_D, _DISPATCH, _UNIT_SCADA, _1, dateStr, duid, val) = do
+    -- TODO: fix the "+1000" timezone offset
     let mzt = parseTime defaultTimeLocale "%0Y/%m/%d %H:%M:%S%z" (dateStr ++ "+1000") :: Maybe ZonedTime
     case mzt of
         Nothing     -> Left $ "Failed to parse time \"" ++ dateStr ++ "\""
@@ -306,7 +307,7 @@ simpleHTTPSafe r = do
 
   return $ case res of
     Left e -> Left e
-    Right rsp -> rspBody rsp `deepseq` Right rsp
+    Right rsp -> rspBody rsp `seq` Right rsp
 
 
 
