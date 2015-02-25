@@ -200,6 +200,7 @@ joinURIs base relative = do
 --   the url of the request. It performs fetches concurrently in groups of 40
 fetchFiles :: [URL] -> IO [(URL,Either String ByteString)]
 fetchFiles urls =
+    -- TODO: this is suspect, change this to be single threaded
     concat <$> mapM (fmap force . mapConcurrently fetch) (chunksOf 1 urls) where
         fetch url = do
             res <- simpleHTTPSafe ((getRequest url) {rqBody = BSL.empty})
