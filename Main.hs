@@ -40,7 +40,7 @@ import           Control.Monad.IO.Class       (liftIO)
 import           Control.Monad.Logger         (NoLoggingT)
 import           Control.Monad.Trans.Resource (ResourceT)
 import           Data.Time
-import           Database.Persist
+import           Database.Persist             (insert)
 import           Database.Persist.Sqlite
 import           System.Locale
 
@@ -123,11 +123,15 @@ process (url, bs) = do
     -- Extract zips from the archive zip files
     let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ [(url, bs)]
     if zextracted `seq` null zeerrs
-        then putStrLn ("Extracted " ++ show (length zextracted) ++ " archive zip files.")
-        else return () -- we don't worry about failures to extract other zip files
-    -- Recurse with any new zip files
-    mapM_ process zextracted
+        then do
+            putStrLn ("Extracted " ++ show (length zextracted) ++ " archive zip files from URL " ++ url)
+            -- Recurse with any new zip files
+            mapM_ process zextracted
+        else processCSVs (url, bs)
 
+
+processCSVs :: (URL, ByteString) -> IO ()
+processCSVs (url, bs) = do
     -- Extract CSVs from the zip files
     let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ [(url, bs)]
     unless (extracted `seq` null eerrs) $ do
@@ -139,6 +143,7 @@ process (url, bs) = do
         putStrLn "Parsing failures:" >> mapM_ print perrs
 
     -- Insert data into database
+    -- TODO: check if CSV is already in db, to avoid problems between archive and current
     mapM_ (runDB . insertCSV) parsed
     -- Insert zip file URLs into database
     runDB $ insert $ AemoZipFile (T.pack url)
@@ -248,7 +253,7 @@ insertCSV :: (String, Vector CSVRow) -> SqlPersistT (NoLoggingT (ResourceT IO)) 
 insertCSV (file, vec) = do
     fid <- insert $ AemoCsvFile (T.pack file) (V.length vec)
     V.mapM_ (ins fid) vec
-    liftIO (putStrLn ("Inserted data from " ++ file))
+    -- liftIO (putStrLn ("Inserted data from " ++ file))
     where
         ins fid r = case csvTupleToPSDatum fid r of
             Left str -> fail str
