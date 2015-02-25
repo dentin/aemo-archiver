@@ -277,10 +277,9 @@ csvTupleToPSDatum fid (_D, _DISPATCH, _UNIT_SCADA, _1, dateStr, duid, val) = do
 
 insertCSV :: (String, Vector CSVRow) -> SqlPersistT (NoLoggingT (ResourceT IO)) ()
 insertCSV (file,vec) = do
-    fid <- insert $ AemoCsvFile (T.pack file) Nothing (V.length vec)
+    fid <- insert $ AemoCsvFile (T.pack file) (V.length vec)
     V.mapM_ (ins fid) vec
-    completed <- liftIO getZonedTime
-    update fid [AemoCsvFileTimeInserted =. Just (zonedTimeToUTC completed)]
+    liftIO (putStrLn ("Inserted data from " ++ file))
     where
         ins fid r = case csvTupleToPSDatum fid r of
             Left str -> fail str

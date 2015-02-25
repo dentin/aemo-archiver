@@ -39,7 +39,6 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 
 	AemoCsvFile
 		fileName Text
-		timeInserted UTCTime Maybe
 		recordsInserted Int
 		UniqueAEMOFile fileName
 
@@ -49,7 +48,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 	PSDatum
 		duid Text
 		sampleTime UTCTime
-		kiloWattHours Double
+		megaWatt Double
 		file AemoCsvFileId
 		deriving Show
 
