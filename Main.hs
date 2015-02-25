@@ -104,25 +104,6 @@ fetchDaily5mActualLoad = do
         -- TODO: add a limit of 10 recursions
         mapM_ process rslts
 
-        ---- Extract CSVs from the zip files
-        --let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ rslts
-        --if extracted `seq` null eerrs
-        --    then putStrLn ("Extracted " ++ show (length extracted) ++ " CSV files.")
-        --    else putStrLn "Extraction failures:" >> mapM_ print eerrs
-
-        ---- Parse the CSV files into database types
-        --let (perrs, parsed) = partition' . map (second parseAEMO) $ extracted
-        --if parsed `seq` null perrs
-        --    then putStrLn ("Parsed " ++ show (length parsed) ++ " CSV files.")
-        --    else putStrLn "Parsing failures:" >> mapM_ print perrs
-
-        ---- Insert data into database
-        --mapM_ (runDB . insertCSV) parsed
-        ---- Insert zip file URLs into database
-        --forM_ rslts $ \(url,_) -> do
-        --    runDB $ insert $ AemoZipFile (T.pack url)
-        --putStrLn ("Inserted data from " ++ show (length parsed) ++ " CSV files.")
-
 
 process :: (URL, ByteString) -> IO ()
 process (url, bs) = do
@@ -130,27 +111,24 @@ process (url, bs) = do
     let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ [(url, bs)]
     if zextracted `seq` null zeerrs
         then putStrLn ("Extracted " ++ show (length zextracted) ++ " archive zip files.")
-        else putStrLn "Extraction failures:" >> mapM_ print zeerrs
+        else return () -- we don't worry about failures to extract other zip files
     -- Recurse with any new zip files
     mapM_ process zextracted
 
     -- Extract CSVs from the zip files
     let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ [(url, bs)]
-    if extracted `seq` null eerrs
-        then putStrLn ("Extracted " ++ show (length extracted) ++ " CSV files.")
-        else putStrLn "Extraction failures:" >> mapM_ print eerrs
+    unless (extracted `seq` null eerrs) $ do
+        putStrLn "Extraction failures:" >> mapM_ print eerrs
 
     -- Parse the CSV files into database types
     let (perrs, parsed) = partition' . map (second parseAEMO) $ extracted
-    if parsed `seq` null perrs
-        then putStrLn ("Parsed " ++ show (length parsed) ++ " CSV files.")
-        else putStrLn "Parsing failures:" >> mapM_ print perrs
+    unless (parsed `seq` null perrs) $ do
+        putStrLn "Parsing failures:" >> mapM_ print perrs
 
     -- Insert data into database
     mapM_ (runDB . insertCSV) parsed
     -- Insert zip file URLs into database
     runDB $ insert $ AemoZipFile (T.pack url)
-    putStrLn ("Inserted data from " ++ show (length parsed) ++ " CSV files.")
 
     return ()
 
@@ -181,30 +159,7 @@ fetchArchiveActualLoad = do
         unless (null rslts) $ do
             putStrLn ("Files fetched: " ++ show (length rslts))
 
-        -- Extract zips from the archive zip files
-        let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ rslts
-        if zextracted `seq` null zeerrs
-            then putStrLn ("Extracted " ++ show (length zextracted) ++ " archive zip files.")
-            else putStrLn "Extraction failures:" >> mapM_ print zeerrs
-
-        -- Extract CSVs from the zip files
-        let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ zextracted
-        if extracted `seq` null eerrs
-            then putStrLn ("Extracted " ++ show (length extracted) ++ " csv files.")
-            else putStrLn "Extraction failures:" >> mapM_ print eerrs
-
-        -- Parse the CSV files into database types
-        let (perrs, parsed) = partition' . map (second parseAEMO) $ extracted
-        if parsed `seq` null perrs
-            then putStrLn ("Parsed " ++ show (length parsed) ++ " csv files.")
-            else putStrLn "Parsing failures:" >> mapM_ print perrs
-
-        -- Insert data into database
-        mapM_ (runDB . insertCSV) parsed
-        -- Insert zip file URLs into database
-        forM_ rslts $ \(url,_) -> do
-            runDB $ insert $ AemoZipFile (T.pack url)
-        putStrLn ("Inserted data from " ++ show (length parsed) ++ " CSV files.")
+        mapM_ process rslts
 
 
 -- | Run the SQL on the sqlite filesystem path
