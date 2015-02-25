@@ -7,7 +7,6 @@ module Main where
 import           Data.ByteString.Lazy         (ByteString)
 import qualified Data.ByteString.Lazy         as BSL
 
-
 import           Data.Vector                  (Vector)
 import qualified Data.Vector                  as V
 
@@ -15,8 +14,6 @@ import qualified Data.ByteString.Lazy.Char8   as C
 import qualified Data.HashSet                 as S
 import           Data.Text                    (Text, unpack)
 import qualified Data.Text                    as T
-
-
 
 import           Control.Concurrent.Async
 import           Control.Exception            (SomeException, catch)
@@ -70,15 +67,11 @@ aemoPSArchiveURL :: URL
 aemoPSArchiveURL =  "http://www.nemweb.com.au/REPORTS/ARCHIVE/Dispatch_SCADA/"
 
 
-runDB :: SqlPersistT (NoLoggingT (ResourceT IO)) a -> IO a
-runDB = runSqlite dbPath
-
-
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
     dbExists <- doesFileExist (unpack dbPath)
-    unless (dbExists) fetchArchiveActualLoad
+    --unless (dbExists) fetchArchiveActualLoad
     fetchDaily5mActualLoad
 
 
@@ -89,11 +82,7 @@ fetchDaily5mActualLoad = do
     zipLinks <- joinLinks aemo5mPSURL
 
     -- Get the names of all known zip files in the database
-    knownZipFiles <- runDB $ do
-        runMigration migrateAll
-
-        es <- selectList [] []
-        return $ map (aemoZipFileFileName . entityVal) es
+    knownZipFiles <- allDbZips
 
     -- Filter URLs for only those that haven't been inserted
     let seenfiles = S.fromList knownZipFiles
@@ -139,11 +128,7 @@ fetchArchiveActualLoad = do
     zipLinks <- joinLinks aemoPSArchiveURL
 
     -- Get the names of all known zip files in the database
-    knownZipFiles <- runDB $ do
-        runMigration migrateAll
-
-        es <- selectList [] []
-        return $ map (aemoZipFileFileName . entityVal) es
+    knownZipFiles <- allDbZips
 
     -- Filter URLs for only those that haven't been inserted
     let seenfiles = S.fromList knownZipFiles
@@ -186,6 +171,19 @@ fetchArchiveActualLoad = do
         forM_ rslts $ \(url,_) -> do
             runDB $ insert $ AemoZipFile (T.pack url)
         putStrLn ("Inserted data from " ++ show (length parsed) ++ " CSV files.")
+
+
+-- | Run the SQL on the sqlite filesystem path
+runDB :: SqlPersistT (NoLoggingT (ResourceT IO)) a -> IO a
+runDB = runSqlite dbPath
+
+
+-- | Get the names of all known zip files in the database
+allDbZips :: IO [Text]
+allDbZips = runDB $ do
+        runMigration migrateAll
+        es <- selectList [] []
+        return $ map (aemoZipFileFileName . entityVal) es
 
 
 -- | Given a URL, finds all HTML links on the page
@@ -234,7 +232,7 @@ fetchFiles urls =
                 Left err -> Left . show $! err
 
 
--- | Takes URLs and zip files and extracts all CSV files from each zip file
+-- | Takes URLs and zip files and extracts all files with a particular suffix from each zip file
 extractFiles :: String -> [(URL,ByteString)] -> [Either (URL,String) (String,ByteString)]
 extractFiles suf arcs = concatMap extract arcs where
     extract (url,bs) =
@@ -306,9 +304,4 @@ simpleHTTPSafe r = do
   return $ case res of
     Left e -> Left e
     Right rsp -> rspBody rsp `seq` Right rsp
-
-
-
-
-
 
