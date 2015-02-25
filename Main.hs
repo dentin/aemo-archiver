@@ -85,6 +85,7 @@ main = do
 fetchDaily5mActualLoad :: IO ()
 fetchDaily5mActualLoad = do
     -- Get the names of all zip files from AEMO website
+    putStrLn "Finding new 5 minute zips..."
     zipLinks <- joinLinks aemo5mPSURL
 
     -- Get the names of all known zip files in the database
@@ -100,18 +101,16 @@ fetchDaily5mActualLoad = do
 
     -- We're done if there aren't any files we haven't loaded yet
     unless (null unseen) $ do
-        putStrLn "\nFetching new files:"
-        mapM_ putStrLn unseen
-
         -- Fetch the contents of the zip files
+        putStrLn ("Fetching " ++ show (length unseen) ++ " new files:")
         fetched <- fetchFiles unseen
-        let (ferrs,rslts) = partition' fetched
+        putChar '\n'
+        let (ferrs, rslts) = partition' fetched
         if rslts `seq` null ferrs
             then return ()
             else putStrLn "Fetch failures:" >> mapM_ print ferrs
         unless (null rslts) $ do
-            putStr "Files fetched: "
-            print (length rslts)
+            putStrLn ("Files fetched: " ++ show (length rslts))
 
         -- Extract CSVs from the zip files
         let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ rslts
@@ -136,6 +135,7 @@ fetchDaily5mActualLoad = do
 fetchArchiveActualLoad :: IO ()
 fetchArchiveActualLoad = do
     -- Get the names of all archive zip files from AEMO website
+    putStrLn "Finding new archive zips..."
     zipLinks <- joinLinks aemoPSArchiveURL
 
     -- Get the names of all known zip files in the database
@@ -151,18 +151,16 @@ fetchArchiveActualLoad = do
 
     -- We're done if there aren't any files we haven't loaded yet
     unless (null unseen) $ do
-        putStrLn "\nFetching new files:"
-        mapM_ putStrLn unseen
-
         -- Fetch the contents of the zip files
+        putStrLn ("Fetching " ++ show (length unseen) ++ " new files:")
         fetched <- fetchFiles unseen
-        let (ferrs,rslts) = partition' fetched
+        putChar '\n'
+        let (ferrs, rslts) = partition' fetched
         if rslts `seq` null ferrs
             then return ()
             else putStrLn "Fetch failures:" >> mapM_ print ferrs
         unless (null rslts) $ do
-            putStr "Files fetched: "
-            print (length rslts)
+            putStrLn ("Files fetched: " ++ show (length rslts))
 
         -- Extract zips from the archive zip files
         let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ rslts
@@ -226,10 +224,11 @@ joinURIs base relative = do
 --   the url of the request. It performs fetches concurrently in groups of 40
 fetchFiles :: [URL] -> IO [(URL,Either String ByteString)]
 fetchFiles urls =
-    concat <$> mapM (fmap force . mapConcurrently fetch) (chunksOf 40 urls) where
+    concat <$> mapM (fmap force . mapConcurrently fetch) (chunksOf 10 urls) where
         fetch url = do
             res <- simpleHTTPSafe ((getRequest url) {rqBody = BSL.empty})
                     `catch` (\e -> return$ Left (ErrorMisc (show (e :: SomeException))))
+            putChar '.'
             return $! (url,) $! case res of
                 Right bs -> Right . rspBody $! bs
                 Left err -> Left . show $! err
