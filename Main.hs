@@ -70,20 +70,35 @@ aemoPSArchiveURL =  "http://www.nemweb.com.au/REPORTS/ARCHIVE/Dispatch_SCADA/"
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
+
+    -- TODO: there is a case to be made to always check the archive
     dbExists <- doesFileExist (unpack dbPath)
-    --unless (dbExists) fetchArchiveActualLoad
-    fetchDaily5mActualLoad
-
-
-fetchDaily5mActualLoad :: IO ()
-fetchDaily5mActualLoad = do
-    -- Get the names of all zip files from AEMO website
-    putStrLn "Finding new 5 minute zips..."
-    zipLinks <- joinLinks aemo5mPSURL
 
     -- Get the names of all known zip files in the database
     knownZipFiles <- allDbZips
 
+    unless (dbExists) $
+        fetchArchiveActualLoad knownZipFiles
+
+    fetchDaily5mActualLoad knownZipFiles
+
+
+fetchDaily5mActualLoad :: [Text] -> IO ()
+fetchDaily5mActualLoad knownZipFiles = do
+    putStrLn "Finding new 5 minute zips..."
+    zipLinks <- joinLinks aemo5mPSURL
+    retrieve knownZipFiles zipLinks
+
+
+fetchArchiveActualLoad :: [Text] -> IO ()
+fetchArchiveActualLoad knownZipFiles = do
+    putStrLn "Finding new archive zips..."
+    zipLinks <- joinLinks aemoPSArchiveURL
+    retrieve knownZipFiles zipLinks
+
+
+retrieve :: [Text] -> [URL] -> IO ()
+retrieve knownZipFiles zipLinks = do
     -- Filter URLs for only those that haven't been inserted
     let seenfiles = S.fromList knownZipFiles
         unseen = filter (\u -> not $ S.member (T.pack u) seenfiles) $ zipLinks
@@ -95,11 +110,9 @@ fetchDaily5mActualLoad = do
         fetched <- fetchFiles unseen
         putChar '\n'
         let (ferrs, rslts) = partition' fetched
-        if rslts `seq` null ferrs
-            then return ()
-            else putStrLn "Fetch failures:" >> mapM_ print ferrs
-        unless (null rslts) $ do
-            putStrLn ("Files fetched: " ++ show (length rslts))
+        unless (rslts `seq` null ferrs) $
+            putStrLn "Fetch failures:" >> mapM_ print ferrs
+        putStrLn ("Files fetched: " ++ show (length rslts))
 
         -- TODO: add a limit of 10 recursions
         mapM_ process rslts
@@ -131,35 +144,6 @@ process (url, bs) = do
     runDB $ insert $ AemoZipFile (T.pack url)
 
     return ()
-
-
-fetchArchiveActualLoad :: IO ()
-fetchArchiveActualLoad = do
-    -- Get the names of all archive zip files from AEMO website
-    putStrLn "Finding new archive zips..."
-    zipLinks <- joinLinks aemoPSArchiveURL
-
-    -- Get the names of all known zip files in the database
-    knownZipFiles <- allDbZips
-
-    -- Filter URLs for only those that haven't been inserted
-    let seenfiles = S.fromList knownZipFiles
-        unseen = filter (\u -> not $ S.member (T.pack u) seenfiles) $ zipLinks
-
-    -- We're done if there aren't any files we haven't loaded yet
-    unless (null unseen) $ do
-        -- Fetch the contents of the zip files
-        putStrLn ("Fetching " ++ show (length unseen) ++ " new files:")
-        fetched <- fetchFiles unseen
-        putChar '\n'
-        let (ferrs, rslts) = partition' fetched
-        if rslts `seq` null ferrs
-            then return ()
-            else putStrLn "Fetch failures:" >> mapM_ print ferrs
-        unless (null rslts) $ do
-            putStrLn ("Files fetched: " ++ show (length rslts))
-
-        mapM_ process rslts
 
 
 -- | Run the SQL on the sqlite filesystem path
@@ -211,7 +195,7 @@ joinURIs base relative = do
 --   the url of the request. It performs fetches concurrently in groups of 40
 fetchFiles :: [URL] -> IO [(URL,Either String ByteString)]
 fetchFiles urls =
-    concat <$> mapM (fmap force . mapConcurrently fetch) (chunksOf 10 urls) where
+    concat <$> mapM (fmap force . mapConcurrently fetch) (chunksOf 1 urls) where
         fetch url = do
             res <- simpleHTTPSafe ((getRequest url) {rqBody = BSL.empty})
                     `catch` (\e -> return$ Left (ErrorMisc (show (e :: SomeException))))
