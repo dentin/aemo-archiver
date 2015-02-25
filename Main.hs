@@ -25,7 +25,7 @@ import           Network.URI
 import           Text.HTML.TagSoup
 
 import           Control.Applicative
-import           Control.Arrow
+import           Control.Arrow                (second)
 import           Control.DeepSeq              (NFData, force)
 import           Control.Monad                (forM_, unless)
 import           Data.Char                    (toLower)
@@ -101,24 +101,58 @@ fetchDaily5mActualLoad = do
         unless (null rslts) $ do
             putStrLn ("Files fetched: " ++ show (length rslts))
 
-        -- Extract CSVs from the zip files
-        let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ rslts
-        if extracted `seq` null eerrs
-            then putStrLn ("Extracted " ++ show (length extracted) ++ " csv files.")
-            else putStrLn "Extraction failures:" >> mapM_ print eerrs
+        -- TODO: add a limit of 10 recursions
+        mapM_ process rslts
 
-        -- Parse the CSV files into database types
-        let (perrs, parsed) = partition' . map (second parseAEMO) $ extracted
-        if parsed `seq` null perrs
-            then putStrLn ("Parsed " ++ show (length parsed) ++ " csv files.")
-            else putStrLn "Parsing failures:" >> mapM_ print perrs
+        ---- Extract CSVs from the zip files
+        --let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ rslts
+        --if extracted `seq` null eerrs
+        --    then putStrLn ("Extracted " ++ show (length extracted) ++ " CSV files.")
+        --    else putStrLn "Extraction failures:" >> mapM_ print eerrs
 
-        -- Insert data into database
-        mapM_ (runDB . insertCSV) parsed
-        -- Insert zip file URLs into database
-        forM_ rslts $ \(url,_) -> do
-            runDB $ insert $ AemoZipFile (T.pack url)
-        putStrLn ("Inserted data from " ++ show (length parsed) ++ " CSV files.")
+        ---- Parse the CSV files into database types
+        --let (perrs, parsed) = partition' . map (second parseAEMO) $ extracted
+        --if parsed `seq` null perrs
+        --    then putStrLn ("Parsed " ++ show (length parsed) ++ " CSV files.")
+        --    else putStrLn "Parsing failures:" >> mapM_ print perrs
+
+        ---- Insert data into database
+        --mapM_ (runDB . insertCSV) parsed
+        ---- Insert zip file URLs into database
+        --forM_ rslts $ \(url,_) -> do
+        --    runDB $ insert $ AemoZipFile (T.pack url)
+        --putStrLn ("Inserted data from " ++ show (length parsed) ++ " CSV files.")
+
+
+process :: (URL, ByteString) -> IO ()
+process (url, bs) = do
+    -- Extract zips from the archive zip files
+    let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ [(url, bs)]
+    if zextracted `seq` null zeerrs
+        then putStrLn ("Extracted " ++ show (length zextracted) ++ " archive zip files.")
+        else putStrLn "Extraction failures:" >> mapM_ print zeerrs
+    -- Recurse with any new zip files
+    mapM_ process zextracted
+
+    -- Extract CSVs from the zip files
+    let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ [(url, bs)]
+    if extracted `seq` null eerrs
+        then putStrLn ("Extracted " ++ show (length extracted) ++ " CSV files.")
+        else putStrLn "Extraction failures:" >> mapM_ print eerrs
+
+    -- Parse the CSV files into database types
+    let (perrs, parsed) = partition' . map (second parseAEMO) $ extracted
+    if parsed `seq` null perrs
+        then putStrLn ("Parsed " ++ show (length parsed) ++ " CSV files.")
+        else putStrLn "Parsing failures:" >> mapM_ print perrs
+
+    -- Insert data into database
+    mapM_ (runDB . insertCSV) parsed
+    -- Insert zip file URLs into database
+    runDB $ insert $ AemoZipFile (T.pack url)
+    putStrLn ("Inserted data from " ++ show (length parsed) ++ " CSV files.")
+
+    return ()
 
 
 fetchArchiveActualLoad :: IO ()
@@ -181,9 +215,9 @@ runDB = runSqlite dbPath
 -- | Get the names of all known zip files in the database
 allDbZips :: IO [Text]
 allDbZips = runDB $ do
-        runMigration migrateAll
-        es <- selectList [] []
-        return $ map (aemoZipFileFileName . entityVal) es
+    runMigration migrateAll
+    es <- selectList [] []
+    return $ map (aemoZipFileFileName . entityVal) es
 
 
 -- | Given a URL, finds all HTML links on the page
@@ -236,19 +270,18 @@ fetchFiles urls =
 extractFiles :: String -> [(URL,ByteString)] -> [Either (URL,String) (String,ByteString)]
 extractFiles suf arcs = concatMap extract arcs where
     extract (url,bs) =
-        let
-            arc = toArchive bs
+        let arc = toArchive bs
             paths = filesInArchive arc
-            csvs = filter (isSuffixOf suf . map toLower) paths
-        in case csvs of
-            []      -> [Left $ (url,"No " ++ suf ++ " found in " ++ url)]
+            files = filter (isSuffixOf suf . map toLower) paths
+        in case files of
+            []      -> [Left $ (url, "No " ++ suf ++ " found in " ++ url)]
             fs  -> map ext fs where
                 ext f = case findEntryByPath f arc of
                     Nothing -> Left  (url, concat ["Could not find ", f, " in archive ", url])
                     Just e  -> Right (f, fromEntry e)
 
 
--- | (Will be) used to parse the AEMO CSV files which contain daily data
+-- | Parse the AEMO CSV files which contain daily data
 parseAEMO :: ByteString -> Either String (Vector CSVRow)
 parseAEMO file =
     -- Removes the beginning and end lines of the file
@@ -256,7 +289,7 @@ parseAEMO file =
     -- Using intercalate instead of unlines to ensure that new lines are the same
     -- as the original document
     let trimmed = C.intercalate "\r\n" . init . drop 1 . C.lines $ file
-    in decode HasHeader trimmed
+    in  decode HasHeader trimmed
 
 
 -- | Takes a tuple parsed from the AEMO CSV data and produces a PSDatum. Time of recording is
@@ -273,7 +306,7 @@ csvTupleToPSDatum fid (_D, _DISPATCH, _UNIT_SCADA, _1, dateStr, duid, val) = do
 
 
 insertCSV :: (String, Vector CSVRow) -> SqlPersistT (NoLoggingT (ResourceT IO)) ()
-insertCSV (file,vec) = do
+insertCSV (file, vec) = do
     fid <- insert $ AemoCsvFile (T.pack file) (V.length vec)
     V.mapM_ (ins fid) vec
     liftIO (putStrLn ("Inserted data from " ++ file))
