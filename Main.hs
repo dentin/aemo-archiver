@@ -76,7 +76,7 @@ main = do
     -- Get the names of all known zip files in the database
     knownZipFiles <- allDbZips
 
-    unless (dbExists) $
+    unless dbExists $
         fetchArchiveActualLoad knownZipFiles
 
     fetchDaily5mActualLoad knownZipFiles
@@ -100,7 +100,7 @@ retrieve :: [Text] -> [URL] -> IO ()
 retrieve knownZipFiles zipLinks = do
     -- Filter URLs for only those that haven't been inserted
     let seenfiles = S.fromList knownZipFiles
-        unseen = filter (\u -> not $ S.member (T.pack u) seenfiles) $ zipLinks
+        unseen = filter (\u -> not $ S.member (T.pack u) seenfiles) zipLinks
 
     -- We're done if there aren't any files we haven't loaded yet
     unless (null unseen) $ do
@@ -113,7 +113,7 @@ retrieve knownZipFiles zipLinks = do
             putStrLn "Fetch failures:" >> mapM_ print ferrs
         putStrLn ("Files fetched: " ++ show (length rslts))
 
-        putStrLn ("Processing data:")
+        putStrLn "Processing data:"
         -- TODO: add a limit of 10 recursions
         mapM_ process rslts
         putStrLn ""
@@ -136,12 +136,12 @@ processCSVs :: (URL, ByteString) -> IO ()
 processCSVs (url, bs) = do
     -- Extract CSVs from the zip files
     let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ [(url, bs)]
-    unless (extracted `seq` null eerrs) $ do
+    unless (extracted `seq` null eerrs) $
         putStrLn "Extraction failures:" >> mapM_ print eerrs
 
     -- Parse the CSV files into database types
     let (perrs, parsed) = partition' . map (second parseAEMO) $ extracted
-    unless (parsed `seq` null perrs) $ do
+    unless (parsed `seq` null perrs) $
         putStrLn "Parsing failures:" >> mapM_ print perrs
 
     -- Insert data into database
@@ -221,7 +221,7 @@ extractFiles suf arcs = concatMap extract arcs where
             paths = filesInArchive arc
             files = filter (isSuffixOf suf . map toLower) paths
         in case files of
-            []      -> [Left $ (url, "No " ++ suf ++ " found in " ++ url)]
+            []      -> [Left (url, "No " ++ suf ++ " found in " ++ url)]
             fs  -> map ext fs where
                 ext f = case findEntryByPath f arc of
                     Nothing -> Left  (url, concat ["Could not find ", f, " in archive ", url])
