@@ -10,11 +10,9 @@
 
 module AEMO.Types where
 
-import           Database.Persist.TH
-
+import           Database.Persist.TH (mkPersist, sqlSettings, mkMigrate, persistLowerCase, share)
 import           Data.Text           (Text)
-
-import           Data.Time
+import           Data.Time 			 (UTCTime)
 
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
