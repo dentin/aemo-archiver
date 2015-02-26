@@ -13,8 +13,7 @@ import qualified Data.Vector           as V   (length, mapM_)
 import qualified Data.ByteString.Lazy.Char8 as C (intercalate, lines)
 import qualified Data.HashSet          as S   (fromList, member)
 import           Data.Text                    (Text, unpack)
-import qualified Data.Text             as T   (pack
-    )
+import qualified Data.Text             as T   (pack)
 
 import           Control.Exception            (SomeException, catch)
 import           Data.Csv                     (HasHeader (..), decode)
@@ -73,6 +72,9 @@ main = do
 
     -- TODO: there is a case to be made to always check the archive
     dbExists <- doesFileExist (unpack dbPath)
+
+    -- Database
+    runDB $ runMigration migrateAll
 
     -- Get the names of all known zip files in the database
     knownZipFiles <- allDbZips
@@ -167,7 +169,6 @@ runDB = runSqlite dbPath
 -- | Get the names of all known zip files in the database
 allDbZips :: IO [Text]
 allDbZips = runDB $ do
-    runMigration migrateAll
     es <- selectList [] []
     return $ map (aemoZipFileFileName . entityVal) es
 
