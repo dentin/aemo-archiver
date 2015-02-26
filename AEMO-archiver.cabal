@@ -82,7 +82,8 @@ executable AEMO-archiver
                         resourcet     >= 1.1    && < 1.2,
                         monad-control >= 0.3    && < 0.4,
                         transformers  >= 0.3    && < 0.4,
-                        time-units    >= 1.0    && < 1.1
+                        time-units    >= 1.0    && < 1.1,
+                        MissingH      >= 1.3    && < 1.4
 
   -- Directories containing source files.
   -- hs-source-dirs:

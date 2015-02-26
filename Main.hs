@@ -23,7 +23,7 @@ import           Network.HTTP                 (Request, Response, HStream, getRe
                                                normalizeRequest, defaultNormalizeRequestOptions,
                                                rqBody, rqURI, normDoClose, simpleHTTP_)
 import           Network.Stream               (ConnError (..), Result)
-import           Network.URI
+import           Network.URI                  (parseURI, parseURIReference, relativeTo)
 import           Text.HTML.TagSoup            (Tag (TagOpen), parseTags)
 
 import           Control.Arrow                (second)
@@ -47,6 +47,8 @@ import           System.Locale                (defaultTimeLocale)
 
 import           System.Directory             (doesFileExist)
 import           System.IO                    (BufferMode (NoBuffering), hSetBuffering, stdout)
+
+import           Data.String.Utils            (split)
 
 import           AEMO.Types
 
@@ -121,6 +123,10 @@ retrieve knownZipFiles zipLinks = do
         putStrLn ""
 
 
+filename :: URL -> String
+filename url = last (split "/" url)
+
+
 process :: Int -> (URL, ByteString) -> IO ()
 process c (url, bs) =
     if c <= 0
@@ -134,7 +140,8 @@ process c (url, bs) =
                 then do
                     -- Recurse with any new zip files
                     mapM_ (process (c-1)) zextracted
-                    runDB $ insert $ AemoZipFile (T.pack url)
+                    -- Hack time, substring out the last part of the url to get just the archive filename
+                    runDB $ insert $ AemoZipFile (T.pack (filename url))
                     putStrLn ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from URL " ++ url)
                 else processCSVs (url, bs)
 
@@ -211,7 +218,7 @@ fetchFiles urls =
     mapM fetch urls where
         fetch url = do
             res <- simpleHTTPSafe ((getRequest url) {rqBody = BSL.empty})
-                    `catch` (\e -> return$ Left (ErrorMisc (show (e :: SomeException))))
+                    `catch` (\e -> return $ Left (ErrorMisc (show (e :: SomeException))))
             putChar '.'
             return $! (url,) $! case res of
                 Right bs -> Right . rspBody $! bs
@@ -226,11 +233,11 @@ extractFiles suf arcs = concatMap extract arcs where
             paths = filesInArchive arc
             files = filter (isSuffixOf suf . map toLower) paths
         in case files of
-            []      -> [Left (url, "No " ++ suf ++ " found in " ++ url)]
+            []  -> [Left (url, "No " ++ suf ++ " found in " ++ url)]
             fs  -> map ext fs where
-                ext f = case findEntryByPath f arc of
-                    Nothing -> Left  (url, concat ["Could not find ", f, " in archive ", url])
-                    Just e  -> Right (f, fromEntry e)
+                    ext f = case findEntryByPath f arc of
+                        Nothing -> Left  (url, concat ["Could not find ", f, " in archive ", url])
+                        Just e  -> Right (f, fromEntry e)
 
 
 -- | Parse the AEMO CSV files which contain daily data
