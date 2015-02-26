@@ -5,26 +5,28 @@
 module Main where
 
 import           Data.ByteString.Lazy         (ByteString)
-import qualified Data.ByteString.Lazy         as BSL
+import qualified Data.ByteString.Lazy  as BSL (empty)
 
 import           Data.Vector                  (Vector)
-import qualified Data.Vector                  as V
+import qualified Data.Vector           as V   (length, mapM_)
 
-import qualified Data.ByteString.Lazy.Char8   as C
-import qualified Data.HashSet                 as S
+import qualified Data.ByteString.Lazy.Char8 as C (intercalate, lines)
+import qualified Data.HashSet          as S   (fromList, member)
 import           Data.Text                    (Text, unpack)
-import qualified Data.Text                    as T
+import qualified Data.Text             as T   (pack
+    )
 
-import           Control.Concurrent.Async
 import           Control.Exception            (SomeException, catch)
-import           Data.Csv
+import           Data.Csv                     (HasHeader (..), decode)
 
-import           Network.HTTP
+import           Network.HTTP                 (Request, Response, HStream, getRequest, rspBody,
+                                               getAuth, failHTTPS, openStream, host, port,
+                                               normalizeRequest, defaultNormalizeRequestOptions,
+                                               rqBody, rqURI, normDoClose, simpleHTTP_)
 import           Network.Stream               (ConnError (..), Result)
 import           Network.URI
-import           Text.HTML.TagSoup
+import           Text.HTML.TagSoup            (Tag (TagOpen), parseTags)
 
-import           Control.Applicative
 import           Control.Arrow                (second)
 import           Control.DeepSeq              (NFData, deepseq)
 import           Control.Monad                (forM_, unless)
@@ -34,19 +36,18 @@ import           Data.List                    (isSuffixOf)
 import           Data.List.Split              (chunksOf)
 import           Data.Maybe                   (fromMaybe, mapMaybe)
 
-import           Codec.Archive.Zip
+import           Codec.Archive.Zip            (toArchive, filesInArchive, findEntryByPath, fromEntry)
 
 import           Control.Monad.IO.Class       (liftIO)
 import           Control.Monad.Logger         (NoLoggingT)
 import           Control.Monad.Trans.Resource (ResourceT)
-import           Data.Time
+import           Data.Time                    (ZonedTime, parseTime, zonedTimeToUTC)
 import           Database.Persist             (insert)
-import           Database.Persist.Sqlite
-import           System.Locale
+import           Database.Persist.Sqlite      (SqlPersistT, runSqlite, runMigration, selectList, entityVal)
+import           System.Locale                (defaultTimeLocale)
 
-import           Data.Time.Units
 import           System.Directory             (doesFileExist)
-import           System.IO
+import           System.IO                    (BufferMode (NoBuffering), hSetBuffering, stdout)
 
 import           AEMO.Types
 
@@ -187,7 +188,7 @@ getARefs url = do
 -- | Takes a URL and finds all zip files linked from it.
 joinLinks :: URL -> IO [URL]
 joinLinks url = do
-    links <-getARefs url
+    links <- getARefs url
     return . filter (isSuffixOf ".zip" . map toLower) . mapMaybe (joinURIs url) $ links
 
 
@@ -197,7 +198,7 @@ joinLinks url = do
 --      joinURIs "http://example.com/foo/bar/" "baz/quux.txt" -> Just "http://example.com/foo/bar/baz/quux.txt"
 joinURIs :: String -> String -> Maybe String
 joinURIs base relative = do
-    buri <- parseURI         base
+    buri <- parseURI          base
     ruri <- parseURIReference relative
     return $ show (ruri `relativeTo` buri)
 
@@ -246,7 +247,7 @@ parseAEMO file =
 -- parsed by appending the +1000 timezone to ensure the correct UTC time is parsed.
 csvTupleToPSDatum :: AemoCsvFileId -> CSVRow -> Either String PSDatum
 csvTupleToPSDatum fid (_D, _DISPATCH, _UNIT_SCADA, _1, dateStr, duid, val) = do
-    -- TODO: fix the "+1000" timezone offset
+    -- TODO: fix the "+1000" timezone offset - first check if AEMO actually changes timezone, I guess otherwise this is fine...
     let mzt = parseTime defaultTimeLocale "%0Y/%m/%d %H:%M:%S%z" (dateStr ++ "+1000") :: Maybe ZonedTime
     case mzt of
         Nothing     -> Left $ "Failed to parse time \"" ++ dateStr ++ "\""
