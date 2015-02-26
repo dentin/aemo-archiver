@@ -26,7 +26,7 @@ import           Text.HTML.TagSoup
 
 import           Control.Applicative
 import           Control.Arrow                (second)
-import           Control.DeepSeq              (NFData, force)
+import           Control.DeepSeq              (NFData, deepseq)
 import           Control.Monad                (forM_, unless)
 import           Data.Char                    (toLower)
 import           Data.Either                  (partitionEithers)
@@ -44,7 +44,6 @@ import           Database.Persist             (insert)
 import           Database.Persist.Sqlite
 import           System.Locale
 
-import           Control.Concurrent
 import           Data.Time.Units
 import           System.Directory             (doesFileExist)
 import           System.IO
@@ -114,8 +113,10 @@ retrieve knownZipFiles zipLinks = do
             putStrLn "Fetch failures:" >> mapM_ print ferrs
         putStrLn ("Files fetched: " ++ show (length rslts))
 
+        putStrLn ("Processing data:")
         -- TODO: add a limit of 10 recursions
         mapM_ process rslts
+        putStrLn ""
 
 
 process :: (URL, ByteString) -> IO ()
@@ -124,9 +125,10 @@ process (url, bs) = do
     let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ [(url, bs)]
     if zextracted `seq` null zeerrs
         then do
-            putStrLn ("Extracted " ++ show (length zextracted) ++ " archive zip files from URL " ++ url)
             -- Recurse with any new zip files
             mapM_ process zextracted
+            runDB $ insert $ AemoZipFile (T.pack url)
+            putStrLn ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from URL " ++ url)
         else processCSVs (url, bs)
 
 
@@ -147,6 +149,7 @@ processCSVs (url, bs) = do
     mapM_ (runDB . insertCSV) parsed
     -- Insert zip file URLs into database
     runDB $ insert $ AemoZipFile (T.pack url)
+    putChar '.'
 
     return ()
 
@@ -197,11 +200,10 @@ joinURIs base relative = do
 
 
 -- | Given a list of URLs, attempts to fetch them all and pairs the result with
---   the url of the request. It performs fetches concurrently in groups of 40
+--   the url of the request.
 fetchFiles :: [URL] -> IO [(URL,Either String ByteString)]
 fetchFiles urls =
-    -- TODO: this is suspect, change this to be single threaded
-    concat <$> mapM (fmap force . mapConcurrently fetch) (chunksOf 1 urls) where
+    mapM fetch urls where
         fetch url = do
             res <- simpleHTTPSafe ((getRequest url) {rqBody = BSL.empty})
                     `catch` (\e -> return$ Left (ErrorMisc (show (e :: SomeException))))
@@ -281,5 +283,5 @@ simpleHTTPSafe r = do
 
   return $ case res of
     Left e -> Left e
-    Right rsp -> rspBody rsp `seq` Right rsp
+    Right rsp -> rspBody rsp `deepseq` Right rsp
 
