@@ -114,22 +114,26 @@ retrieve knownZipFiles zipLinks = do
         putStrLn ("Files fetched: " ++ show (length rslts))
 
         putStrLn "Processing data:"
-        -- TODO: add a limit of 10 recursions
-        mapM_ process rslts
+        mapM_ (process 10) rslts
         putStrLn ""
 
 
-process :: (URL, ByteString) -> IO ()
-process (url, bs) = do
-    -- Extract zips from the archive zip files
-    let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ [(url, bs)]
-    if zextracted `seq` null zeerrs
+process :: Int -> (URL, ByteString) -> IO ()
+process c (url, bs) =
+    if c <= 0
         then do
-            -- Recurse with any new zip files
-            mapM_ process zextracted
-            runDB $ insert $ AemoZipFile (T.pack url)
-            putStrLn ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from URL " ++ url)
-        else processCSVs (url, bs)
+            putStrLn ("Recursion limit reached for URL " ++ url)
+            return ()
+        else do
+            -- Extract zips from the archive zip files
+            let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ [(url, bs)]
+            if zextracted `seq` null zeerrs
+                then do
+                    -- Recurse with any new zip files
+                    mapM_ (process (c-1)) zextracted
+                    runDB $ insert $ AemoZipFile (T.pack url)
+                    putStrLn ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from URL " ++ url)
+                else processCSVs (url, bs)
 
 
 processCSVs :: (URL, ByteString) -> IO ()
@@ -181,7 +185,6 @@ getARefs url = do
 
 
 -- | Takes a URL and finds all zip files linked from it.
--- TODO: handle case insensitive matching of the .zip suffix
 joinLinks :: URL -> IO [URL]
 joinLinks url = do
     links <-getARefs url
