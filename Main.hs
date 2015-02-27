@@ -28,12 +28,12 @@ import           Text.HTML.TagSoup            (Tag (TagOpen), parseTags)
 
 import           Control.Arrow                (second)
 import           Control.DeepSeq              (NFData, deepseq)
-import           Control.Monad                (forM_, unless)
+import           Control.Monad                (forM_, unless, filterM)
 import           Data.Char                    (toLower)
 import           Data.Either                  (partitionEithers)
 import           Data.List                    (isSuffixOf)
 import           Data.List.Split              (chunksOf)
-import           Data.Maybe                   (fromMaybe, mapMaybe)
+import           Data.Maybe                   (fromMaybe, mapMaybe, isNothing)
 
 import           Codec.Archive.Zip            (toArchive, filesInArchive, findEntryByPath, fromEntry)
 
@@ -42,7 +42,8 @@ import           Control.Monad.Logger         (NoLoggingT)
 import           Control.Monad.Trans.Resource (ResourceT)
 import           Data.Time                    (ZonedTime, parseTime, zonedTimeToUTC)
 import           Database.Persist             (insert)
-import           Database.Persist.Sqlite      (SqlPersistT, runSqlite, runMigration, selectList, entityVal)
+import           Database.Persist.Sqlite      (SqlPersistT, runSqlite, runMigration, selectList, entityVal, selectFirst,
+                                               (==.))
 import           System.Locale                (defaultTimeLocale)
 
 import           System.Directory             (doesFileExist)
@@ -153,19 +154,27 @@ processCSVs (fn, bs) = do
     unless (extracted `seq` null eerrs) $
         putStrLn "Extraction failures:" >> mapM_ print eerrs
 
+    -- Check if CSV is already in db, to avoid new archive zips containing old current CVS files
+    newCsvFiles <- filterM (\(f, _) -> csvNotInDb f) extracted
+
     -- Parse the CSV files into database types
-    let (perrs, parsed) = partition' . map (second parseAEMO) $ extracted
+    let (perrs, parsed) = partition' . map (second parseAEMO) $ newCsvFiles
     unless (parsed `seq` null perrs) $
         putStrLn "Parsing failures:" >> mapM_ print perrs
 
     -- Insert data into database
-    -- TODO: check if CSV is already in db, to avoid problems between archive and current
     mapM_ (runDB . insertCSV) parsed
-    -- Insert zip file URLs into database
+    -- Insert zip file filename into database
     runDB $ insert $ AemoZipFile (T.pack fn)
     putChar '.'
 
     return ()
+
+
+csvNotInDb :: FileName -> IO Bool
+csvNotInDb f = do
+    csv <- runDB $ selectFirst [AemoCsvFileFileName ==. T.pack f] []
+    return (isNothing csv)
 
 
 -- | Run the SQL on the sqlite filesystem path
@@ -208,7 +217,7 @@ joinURIs :: URL -> String -> Maybe (FileName, URL)
 joinURIs base relative = do
     buri <- parseURI          base
     ruri <- parseURIReference relative
-    return $ (filename relative, show (ruri `relativeTo` buri))
+    return (filename relative, show (ruri `relativeTo` buri))
 
 
 -- | Given a list of URLs, attempts to fetch them all and pairs the result with
@@ -226,7 +235,7 @@ fetchFiles urls =
 
 
 -- | Takes URLs and zip files and extracts all files with a particular suffix from each zip file
-extractFiles :: String -> [(URL,ByteString)] -> [Either (URL,String) (String,ByteString)]
+extractFiles :: String -> [(URL, ByteString)] -> [Either (URL, String) (FileName, ByteString)]
 extractFiles suf arcs = concatMap extract arcs where
     extract (url,bs) =
         let arc = toArchive bs
