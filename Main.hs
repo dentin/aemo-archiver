@@ -54,6 +54,7 @@ import           AEMO.Types
 
 
 type URL = String
+type FileName = String
 
 type CSVRow = ((), (), (), (), String, String, Double)
 
@@ -101,11 +102,11 @@ fetchArchiveActualLoad knownZipFiles = do
     retrieve knownZipFiles zipLinks
 
 
-retrieve :: [Text] -> [URL] -> IO ()
+retrieve :: [Text] -> [(FileName, URL)] -> IO ()
 retrieve knownZipFiles zipLinks = do
     -- Filter URLs for only those that haven't been inserted
     let seenfiles = S.fromList knownZipFiles
-        unseen = filter (\u -> not $ S.member (T.pack u) seenfiles) zipLinks
+        unseen = filter (\(fn,_) -> not $ S.member (T.pack fn) seenfiles) zipLinks
 
     -- We're done if there aren't any files we haven't loaded yet
     unless (null unseen) $ do
@@ -127,29 +128,28 @@ filename :: URL -> String
 filename url = last (split "/" url)
 
 
-process :: Int -> (URL, ByteString) -> IO ()
-process c (url, bs) =
+process :: Int -> (FileName, ByteString) -> IO ()
+process c (fn, bs) =
     if c <= 0
         then do
-            putStrLn ("Recursion limit reached for URL " ++ url)
+            putStrLn ("Recursion limit reached for URL " ++ fn)
             return ()
         else do
             -- Extract zips from the archive zip files
-            let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ [(url, bs)]
+            let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ [(fn, bs)]
             if zextracted `seq` null zeerrs
                 then do
                     -- Recurse with any new zip files
                     mapM_ (process (c-1)) zextracted
-                    -- Hack time, substring out the last part of the url to get just the archive filename
-                    runDB $ insert $ AemoZipFile (T.pack (filename url))
-                    putStrLn ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from URL " ++ url)
-                else processCSVs (url, bs)
+                    runDB $ insert $ AemoZipFile (T.pack fn)
+                    putStrLn ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from file " ++ fn)
+                else processCSVs (fn, bs)
 
 
-processCSVs :: (URL, ByteString) -> IO ()
-processCSVs (url, bs) = do
+processCSVs :: (FileName, ByteString) -> IO ()
+processCSVs (fn, bs) = do
     -- Extract CSVs from the zip files
-    let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ [(url, bs)]
+    let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ [(fn, bs)]
     unless (extracted `seq` null eerrs) $
         putStrLn "Extraction failures:" >> mapM_ print eerrs
 
@@ -162,7 +162,7 @@ processCSVs (url, bs) = do
     -- TODO: check if CSV is already in db, to avoid problems between archive and current
     mapM_ (runDB . insertCSV) parsed
     -- Insert zip file URLs into database
-    runDB $ insert $ AemoZipFile (T.pack url)
+    runDB $ insert $ AemoZipFile (T.pack fn)
     putChar '.'
 
     return ()
@@ -194,33 +194,33 @@ getARefs url = do
 
 
 -- | Takes a URL and finds all zip files linked from it.
-joinLinks :: URL -> IO [URL]
+joinLinks :: URL -> IO [(FileName, URL)]
 joinLinks url = do
     links <- getARefs url
-    return . filter (isSuffixOf ".zip" . map toLower) . mapMaybe (joinURIs url) $ links
+    return . mapMaybe (joinURIs url) . filter (isSuffixOf ".zip" . map toLower) $ links
 
 
 -- | Takes a base URL and a path relative to that URL and joins them:
 --      joinURIs "http://example.com/foo/bar" "/baz/quux.txt" -> Just "http://example.com/baz/quux.txt"
 --      joinURIs "http://example.com/foo/bar" "baz/quux.txt"  -> Just "http://example.com/foo/baz/quux.txt"
 --      joinURIs "http://example.com/foo/bar/" "baz/quux.txt" -> Just "http://example.com/foo/bar/baz/quux.txt"
-joinURIs :: String -> String -> Maybe String
+joinURIs :: URL -> String -> Maybe (FileName, URL)
 joinURIs base relative = do
     buri <- parseURI          base
     ruri <- parseURIReference relative
-    return $ show (ruri `relativeTo` buri)
+    return $ (filename relative, show (ruri `relativeTo` buri))
 
 
 -- | Given a list of URLs, attempts to fetch them all and pairs the result with
 --   the url of the request.
-fetchFiles :: [URL] -> IO [(URL,Either String ByteString)]
+fetchFiles :: [(FileName, URL)] -> IO [(FileName, Either String ByteString)]
 fetchFiles urls =
     mapM fetch urls where
-        fetch url = do
+        fetch (fn, url) = do
             res <- simpleHTTPSafe ((getRequest url) {rqBody = BSL.empty})
                     `catch` (\e -> return $ Left (ErrorMisc (show (e :: SomeException))))
             putChar '.'
-            return $! (url,) $! case res of
+            return $! (fn,) $! case res of
                 Right bs -> Right . rspBody $! bs
                 Left err -> Left . show $! err
 
