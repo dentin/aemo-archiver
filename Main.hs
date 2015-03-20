@@ -74,18 +74,13 @@ main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
 
-    -- TODO: there is a case to be made to always check the archive
-    dbExists <- doesFileExist (unpack dbPath)
-
     -- Database
     runDB $ runMigration migrateAll
 
     -- Get the names of all known zip files in the database
     knownZipFiles <- allDbZips
 
-    unless dbExists $
-        fetchArchiveActualLoad knownZipFiles
-
+    fetchArchiveActualLoad knownZipFiles
     fetchDaily5mActualLoad knownZipFiles
 
 
