@@ -43,7 +43,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 	AemoZipFile
 		fileName Text
 
-	PSDatum
+	PowerStationDatum
 		duid Text
 		sampleTime UTCTime
 		megaWatt Double

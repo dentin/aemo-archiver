@@ -255,17 +255,17 @@ parseAEMO file =
     in  decode HasHeader trimmed
 
 
--- | Takes a tuple parsed from the AEMO CSV data and produces a PSDatum. Time of recording is
+-- | Takes a tuple parsed from the AEMO CSV data and produces a PowerStationDatum. Time of recording is
 -- parsed by appending the +1000 timezone to ensure the correct UTC time is parsed.
-csvTupleToPSDatum :: AemoCsvFileId -> CSVRow -> Either String PSDatum
-csvTupleToPSDatum fid (_D, _DISPATCH, _UNIT_SCADA, _1, dateStr, duid, val) = do
+csvTupleToPowerStationDatum :: AemoCsvFileId -> CSVRow -> Either String PowerStationDatum
+csvTupleToPowerStationDatum fid (_D, _DISPATCH, _UNIT_SCADA, _1, dateStr, duid, val) = do
     -- TODO: fix the "+1000" timezone offset - first check if AEMO actually changes timezone, I guess otherwise this is fine...
     let mzt = parseTime defaultTimeLocale "%0Y/%m/%d %H:%M:%S%z" (dateStr ++ "+1000") :: Maybe ZonedTime
     case mzt of
         Nothing     -> Left $ "Failed to parse time \"" ++ dateStr ++ "\""
         Just zt     ->
             let utctime = zonedTimeToUTC zt
-            in Right $ PSDatum (T.pack duid) utctime val fid
+            in Right $ PowerStationDatum (T.pack duid) utctime val fid
 
 
 insertCSV :: (String, Vector CSVRow) -> SqlPersistT (NoLoggingT (ResourceT IO)) ()
@@ -274,7 +274,7 @@ insertCSV (file, vec) = do
     V.mapM_ (ins fid) vec
     -- liftIO (putStrLn ("Inserted data from " ++ file))
     where
-        ins fid r = case csvTupleToPSDatum fid r of
+        ins fid r = case csvTupleToPowerStationDatum fid r of
             Left str -> fail str
             Right psd -> insert psd
 
