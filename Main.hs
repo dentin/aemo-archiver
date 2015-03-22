@@ -18,6 +18,7 @@ import           Data.List.Split              (chunksOf)
 import           Control.Monad.IO.Class       (liftIO)
 import           System.Directory             (doesFileExist)
 import           System.IO                    (BufferMode (NoBuffering), hSetBuffering, stdout)
+import           Database.Persist             (insert)
 
 import           AEMO.Types
 import           AEMO.WebScraper
@@ -94,7 +95,7 @@ process c (fn, bs) =
                 then do
                     -- Recurse with any new zip files
                     mapM_ (process (c-1)) zextracted
-                    dbInsert $ AemoZipFile (T.pack fn)
+                    runDB $ insert $ AemoZipFile (T.pack fn)
                     putStrLn ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from file " ++ fn)
                 else processCSVs (fn, bs)
 
@@ -114,11 +115,12 @@ processCSVs (fn, bs) = do
     unless (parsed `seq` null perrs) $
         putStrLn "Parsing failures:" >> mapM_ print perrs
 
-    -- Insert data into database
-    mapM_ insertCSV parsed
-    -- Insert zip file filename into database
-    dbInsert $ AemoZipFile (T.pack fn)
-    putChar '.'
+    runDB $ do
+        -- Insert data into database
+        mapM_ insertCSV parsed
+        -- Insert zip file filename into database
+        insert $ AemoZipFile (T.pack fn)
+        liftIO $ putChar '.'
 
     return ()
 

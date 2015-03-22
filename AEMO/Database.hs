@@ -19,14 +19,11 @@ import           AEMO.Types
 
 
 type CSVRow = ((), (), (), (), String, String, Double)
+type DBMonad a = SqlPersistT (NoLoggingT (ResourceT IO)) a
 
 
 dbPath :: Text
 dbPath = "AEMO.sqlite"
-
-
---dbInsert :: types are hard!
-dbInsert v = runDB $ insert v
 
 
 migrateDb :: IO ()
@@ -40,7 +37,7 @@ csvNotInDb f = do
 
 
 -- | Run the SQL on the sqlite filesystem path
-runDB :: SqlPersistT (NoLoggingT (ResourceT IO)) a -> IO a
+runDB :: DBMonad a -> IO a
 runDB = runSqlite dbPath
 
 
@@ -51,8 +48,8 @@ allDbZips = runDB $ do
     return $ map (aemoZipFileFileName . entityVal) es
 
 
-insertCSV :: (String, Vector CSVRow) -> IO ()
-insertCSV (file, vec) = runDB $ do
+insertCSV :: (String, Vector CSVRow) -> DBMonad ()
+insertCSV (file, vec) = do
     fid <- insert $ AemoCsvFile (T.pack file) (V.length vec)
     V.mapM_ (ins fid) vec
     -- liftIO (putStrLn ("Inserted data from " ++ file))
