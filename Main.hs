@@ -4,44 +4,25 @@
 module Main where
 
 import           Data.ByteString.Lazy         (ByteString)
-
 import           Data.Vector                  (Vector)
 import qualified Data.Vector           as V   (length, mapM_)
-
 import qualified Data.ByteString.Lazy.Char8 as C (intercalate, lines)
 import qualified Data.HashSet          as S   (fromList, member)
-import           Data.Text                    (Text, unpack)
+import           Data.Text                    (Text)
 import qualified Data.Text             as T   (pack)
-
 import           Data.Csv                     (HasHeader (..), decode)
-
 import           Control.Arrow                (second)
 import           Control.Monad                (forM_, unless, filterM)
 import           Data.Either                  (partitionEithers)
 import           Data.List.Split              (chunksOf)
-import           Data.Maybe                   (isNothing)
-
 import           Control.Monad.IO.Class       (liftIO)
-import           Control.Monad.Logger         (NoLoggingT)
-import           Control.Monad.Trans.Resource (ResourceT)
-import           Data.Time                    (ZonedTime, parseTime, zonedTimeToUTC)
-import           Database.Persist             (insert)
-import           Database.Persist.Sqlite      (SqlPersistT, runSqlite, runMigration, selectList, entityVal, selectFirst,
-                                               (==.))
-import           System.Locale                (defaultTimeLocale)
-
 import           System.Directory             (doesFileExist)
 import           System.IO                    (BufferMode (NoBuffering), hSetBuffering, stdout)
 
 import           AEMO.Types
 import           AEMO.WebScraper
+import           AEMO.Database
 
-
-type CSVRow = ((), (), (), (), String, String, Double)
-
-
-dbPath :: Text
-dbPath = "AEMO.sqlite"
 
 aemo5mPSURL :: URL
 aemo5mPSURL =  "http://www.nemweb.com.au/REPORTS/CURRENT/Dispatch_SCADA/"
@@ -55,7 +36,7 @@ main = do
     hSetBuffering stdout NoBuffering
 
     -- Database
-    runDB $ runMigration migrateAll
+    migrateDb
 
     -- Get the names of all known zip files in the database
     knownZipFiles <- allDbZips
@@ -113,7 +94,7 @@ process c (fn, bs) =
                 then do
                     -- Recurse with any new zip files
                     mapM_ (process (c-1)) zextracted
-                    runDB $ insert $ AemoZipFile (T.pack fn)
+                    dbInsert $ AemoZipFile (T.pack fn)
                     putStrLn ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from file " ++ fn)
                 else processCSVs (fn, bs)
 
@@ -134,30 +115,12 @@ processCSVs (fn, bs) = do
         putStrLn "Parsing failures:" >> mapM_ print perrs
 
     -- Insert data into database
-    mapM_ (runDB . insertCSV) parsed
+    mapM_ insertCSV parsed
     -- Insert zip file filename into database
-    runDB $ insert $ AemoZipFile (T.pack fn)
+    dbInsert $ AemoZipFile (T.pack fn)
     putChar '.'
 
     return ()
-
-
-csvNotInDb :: FileName -> IO Bool
-csvNotInDb f = do
-    csv <- runDB $ selectFirst [AemoCsvFileFileName ==. T.pack f] []
-    return (isNothing csv)
-
-
--- | Run the SQL on the sqlite filesystem path
-runDB :: SqlPersistT (NoLoggingT (ResourceT IO)) a -> IO a
-runDB = runSqlite dbPath
-
-
--- | Get the names of all known zip files in the database
-allDbZips :: IO [Text]
-allDbZips = runDB $ do
-    es <- selectList [] []
-    return $ map (aemoZipFileFileName . entityVal) es
 
 
 -- | Parse the AEMO CSV files which contain daily data
@@ -169,30 +132,6 @@ parseAEMO file =
     -- as the original document
     let trimmed = C.intercalate "\r\n" . init . drop 1 . C.lines $ file
     in  decode HasHeader trimmed
-
-
--- | Takes a tuple parsed from the AEMO CSV data and produces a PowerStationDatum. Time of recording is
--- parsed by appending the +1000 timezone to ensure the correct UTC time is parsed.
-csvTupleToPowerStationDatum :: AemoCsvFileId -> CSVRow -> Either String PowerStationDatum
-csvTupleToPowerStationDatum fid (_D, _DISPATCH, _UNIT_SCADA, _1, dateStr, duid, val) = do
-    -- TODO: fix the "+1000" timezone offset - first check if AEMO actually changes timezone, I guess otherwise this is fine...
-    let mzt = parseTime defaultTimeLocale "%0Y/%m/%d %H:%M:%S%z" (dateStr ++ "+1000") :: Maybe ZonedTime
-    case mzt of
-        Nothing     -> Left $ "Failed to parse time \"" ++ dateStr ++ "\""
-        Just zt     ->
-            let utctime = zonedTimeToUTC zt
-            in Right $ PowerStationDatum (T.pack duid) utctime val fid
-
-
-insertCSV :: (String, Vector CSVRow) -> SqlPersistT (NoLoggingT (ResourceT IO)) ()
-insertCSV (file, vec) = do
-    fid <- insert $ AemoCsvFile (T.pack file) (V.length vec)
-    V.mapM_ (ins fid) vec
-    -- liftIO (putStrLn ("Inserted data from " ++ file))
-    where
-        ins fid r = case csvTupleToPowerStationDatum fid r of
-            Left str -> fail str
-            Right psd -> insert psd
 
 
 partition' :: [(a, Either b c)] -> ([(a,b)], [(a,c)])

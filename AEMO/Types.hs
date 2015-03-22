@@ -15,6 +15,9 @@ import           Data.Text           (Text)
 import           Data.Time 			 (UTCTime)
 
 
+type FileName = String
+
+
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 	PowerStation
 		participant				Text

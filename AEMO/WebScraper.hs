@@ -18,10 +18,9 @@ import           Control.Exception            (SomeException, catch)
 import           Codec.Archive.Zip            (toArchive, filesInArchive, findEntryByPath, fromEntry)
 import           Control.DeepSeq              (NFData, deepseq)
 import           Data.String.Utils            (split)
-
+import           AEMO.Types                   (FileName)
 
 type URL = String
-type FileName = String
 
 
 -- | Given a URL, finds all HTML links on the page
