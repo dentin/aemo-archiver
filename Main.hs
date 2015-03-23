@@ -25,13 +25,6 @@ import           AEMO.WebScraper
 import           AEMO.Database
 
 
-aemo5mPSURL :: URL
-aemo5mPSURL =  "http://www.nemweb.com.au/REPORTS/CURRENT/Dispatch_SCADA/"
-
-aemoPSArchiveURL :: URL
-aemoPSArchiveURL =  "http://www.nemweb.com.au/REPORTS/ARCHIVE/Dispatch_SCADA/"
-
-
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering

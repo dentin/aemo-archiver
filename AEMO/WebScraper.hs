@@ -7,11 +7,11 @@ import           Network.HTTP                 (Request, Response, HStream, getRe
                                                normalizeRequest, defaultNormalizeRequestOptions,
                                                rqBody, rqURI, normDoClose, simpleHTTP_)
 import           Network.Stream               (ConnError (..), Result)
-import           Network.URI                  (parseURI, parseURIReference, relativeTo)
+import           Network.URI                  (parseURI, parseURIReference, relativeTo, escapeURIString)
 import           Text.HTML.TagSoup            (Tag (TagOpen), parseTags)
 import           Data.Char                    (toLower)
 import           Data.Maybe                   (fromMaybe, mapMaybe)
-import           Data.List                    (isSuffixOf)
+import           Data.List                    (isSuffixOf, isInfixOf)
 import           Data.ByteString.Lazy         (ByteString)
 import qualified Data.ByteString.Lazy  as BSL (empty)
 import           Control.Exception            (SomeException, catch)
@@ -21,6 +21,30 @@ import           Data.String.Utils            (split)
 import           AEMO.Types                   (FileName)
 
 type URL = String
+
+
+aemo5mPSURL :: URL
+aemo5mPSURL =  "http://www.nemweb.com.au/REPORTS/CURRENT/Dispatch_SCADA/"
+
+aemoPSArchiveURL :: URL
+aemoPSArchiveURL =  "http://www.nemweb.com.au/REPORTS/ARCHIVE/Dispatch_SCADA/"
+
+regsAndExemptsUrl :: URL
+regsAndExemptsUrl = "http://www.aemo.com.au/About-the-Industry/Registration/Current-Registration-and-Exemption-lists/"
+
+regsAndExemptsNamePart :: String
+regsAndExemptsNamePart = "NEM_Registration_and_Exemption__List"
+
+
+-- | Scrape the AEMO Regs and Exemptions page for the URL of the Regs and Exemption List Excel file.
+getRegistrationsFileUrl :: IO (Either [Char] (FileName, URL))
+getRegistrationsFileUrl = do
+    refs <- getARefs regsAndExemptsUrl
+    case (filter (regsAndExemptsNamePart `isInfixOf`) refs) of
+        [x]   -> return $ maybe (Left ("Could not join " ++ regsAndExemptsUrl ++ " and path " ++ x))
+                                Right (joinURIs regsAndExemptsUrl x)
+        []    -> return $ Left ("Could not find " ++ regsAndExemptsNamePart ++ " URL.")
+        (_:_) -> return $ Left ("Found too many " ++ regsAndExemptsNamePart ++ " URLs.")
 
 
 -- | Given a URL, finds all HTML links on the page
@@ -50,7 +74,7 @@ joinLinks url = do
 joinURIs :: URL -> String -> Maybe (FileName, URL)
 joinURIs base relative = do
     buri <- parseURI          base
-    ruri <- parseURIReference relative
+    ruri <- parseURIReference $ escapeURIString (/=' ') relative
     return (filename relative, show (ruri `relativeTo` buri))
 
 
