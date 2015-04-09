@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Download the AEMO Registration and Exemption list for the NEM, and extract the Generators list.
+#
+# Dependencies:
+#   curl
+#   perl (simpler tools like sed have different command line switches between GNU/Linux and BSD/OSX)
+#   Gnumeric
+
+# Where to get the URL of the file from
+BASE_URL='http://www.aemo.com.au/About-the-Industry/Registration/Current-Registration-and-Exemption-lists'
+# What to name the file when downloaded
+EXCEL_FILE_NAME='Registration_and_Exemption_List.xls'
+# Grab the URL of the file out of the HTML, convert spaces to %20
+FILE_PART_URL=$(curl --silent ${BASE_URL} | perl -ne '/a href="(.+)">Registration and Exemption List</ && print $1' | perl -pe 's/ /%20/g')
+# Get the file
+curl --silent -o ${EXCEL_FILE_NAME} "${BASE_URL}/${FILE_PART_URL}"
+# Export each sheet to a CSV file
+ssconvert --export-file-per-sheet ${EXCEL_FILE_NAME} 'nem-%s.csv'
+
+# The interesting output file should be called 'nem-Generators and Scheduled Loads.csv'
