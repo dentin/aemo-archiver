@@ -3,40 +3,63 @@
 
 module Main where
 
-import           Data.ByteString.Lazy         (ByteString)
+import           Data.ByteString.Lazy         (ByteString, readFile)
+import           Data.ByteString.Lazy  as B   (readFile)
 import           Data.Vector                  (Vector)
 import qualified Data.Vector           as V   (length, mapM_)
+-- TODO: why Char8?
 import qualified Data.ByteString.Lazy.Char8 as C (intercalate, lines)
 import qualified Data.HashSet          as S   (fromList, member)
 import           Data.Text                    (Text)
 import qualified Data.Text             as T   (pack)
 import           Data.Csv                     (HasHeader (..), decode)
 import           Control.Arrow                (second)
-import           Control.Monad                (forM_, unless, filterM)
+import           Control.Monad                (forM_, unless, filterM, when, liftM)
 import           Data.Either                  (partitionEithers)
 import           Data.List.Split              (chunksOf)
 import           Control.Monad.IO.Class       (liftIO)
 import           System.Directory             (doesFileExist)
+import           System.Exit                  (ExitCode(ExitFailure), exitWith)
 import           System.IO                    (BufferMode (NoBuffering), hSetBuffering, stdout)
-import           Database.Persist             (insert)
+import           Database.Persist             (insert, count, (==.))
+import           Database.Persist.Types       (Filter)
 
 import           AEMO.Types
 import           AEMO.WebScraper
 import           AEMO.Database
 
 
+gensAndLoads :: FilePath
+gensAndLoads = "nem-Generators and Scheduled Loads.csv"
+
+
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
 
+    -- TODO: auto-migrate and auto-populate-powerstations should be separate tool,
     -- Database
     migrateDb
 
-    -- Get the names of all known zip files in the database
-    knownZipFiles <- allDbZips
+    -- Check if we have any power stations, otherwise initialise them
+    numStations <- runDB $ count ([] :: [Filter PowerStation])
+    when (numStations == 0) $ do
+        exists <- doesFileExist gensAndLoads
+        unless (exists) $ do
+            exitWith $ ExitFailure 1
+        bs <- B.readFile gensAndLoads
+        either error (TODO) $ parseGensAndSchedLoads bs
 
-    fetchArchiveActualLoad knownZipFiles
-    fetchDaily5mActualLoad knownZipFiles
+
+    -- Get the names of all known zip files in the database
+    --knownZipFiles <- allDbZips
+
+    --fetchArchiveActualLoad knownZipFiles
+    --fetchDaily5mActualLoad knownZipFiles
+
+
+parseGensAndSchedLoads :: ByteString -> Either String (Vector CSVRow)
+parseGensAndSchedLoads bs = undefined
 
 
 fetchDaily5mActualLoad :: [Text] -> IO ()
