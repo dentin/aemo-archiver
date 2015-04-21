@@ -48,7 +48,7 @@ cabal-version:       >=1.10
 
 executable AEMO-archiver
   -- .hs or .lhs file containing the Main module.
-  main-is:             Main.hs
+  main-is:             AEMO-archiver.hs
   ghc-options:         -threaded -with-rtsopts=-N
 
   -- Modules included in this executable, other than Main.
