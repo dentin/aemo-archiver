@@ -9,6 +9,5 @@ cabal-dev
 .cabal-sandbox/
 cabal.sandbox.config
 cabal.config
-*.CSV
 *.zip
 *.sqlite
