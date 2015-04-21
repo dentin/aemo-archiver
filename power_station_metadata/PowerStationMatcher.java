@@ -40,7 +40,7 @@ public class PowerStationMatcher {
             }
         }
 
-        // find the rest using the distance
+        // find the rest using the Levenshtein distance
         for (Map.Entry<String, String> e : stations.entrySet()) {
             System.out.println(e.getValue() + "," + minDistanceLocation(locations, e.getKey(), e.getValue()));
         }
@@ -51,15 +51,24 @@ public class PowerStationMatcher {
         final BufferedReader r = new BufferedReader(new FileReader(filename));
         final Map<String, String> m = new HashMap<>();
         for (String line; (line = r.readLine()) != null; ) {
+            // there are columns with commas in them, we need to remove them so we don't screw up splitting
+            // TODO: refactor CSV reading to use a robust library!
+            line = line.replaceAll(", ", " ");
+
             final String[] parts = line.split(",");
 
             // sanitise
-            final String value = parts[valueCol];
+            String value = parts[valueCol];
             if ("-".equals(value)) continue;
             if (value.trim().isEmpty()) continue;
+            value = value.replaceAll("\"", "");
             String key = parts[keyCol].replaceAll("[\"/()]", ""); // remove quotes
+            key = key.replaceAll(" (Gas Power Station|Power Station|Station|Power Plant|Generation Plant|Plant)", "");
+            key = key.replaceAll(" (Wind Farm|Solar Farm|Solar Park)", "");
+            key = key.replaceAll(" (Waste Disposal Facility|Renewable Energy Facility|Energy Facility|Facility)", "");
+            key = key.replaceAll(" (Gas Turbine|Landfill|Hydro|GT)", "");
 
-            m.put(key.trim(), parts[valueCol]);
+            m.put(key.trim(), value.trim());
         }
         r.close();
         return m;
