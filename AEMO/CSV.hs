@@ -6,6 +6,7 @@ module AEMO.CSV where
 import           Data.ByteString.Lazy        (ByteString)
 -- import qualified Data.ByteString.Lazy        as B
 import           Data.Vector                 (Vector)
+import qualified Data.Vector                 as V
 -- TODO: why Char8?
 import           Control.Arrow               (second)
 import           Control.Monad               (filterM, unless)
@@ -108,6 +109,20 @@ processCSVs (fn, bs) = do
         liftIO $ putChar '.'
 
     return ()
+
+
+insertCSV :: (String, Vector CSVRow) -> DBMonad ()
+insertCSV (file, vec) = do
+    fid <- insert $ AemoCsvFile (T.pack file) (V.length vec)
+    let (errs,psdata) = partitionEithers . map (csvTupleToPowerStationDatum fid) . V.toList $ vec
+    case errs of
+        [] -> do
+            insertMany_  psdata
+            $(logInfo) $ T.pack $ "Inserted data from " ++ file
+        _  -> do
+            $(logError) "Failed to parse CSV"
+            mapM_ ($(logError) . T.pack . show) errs
+            error "Failed to parse CSVs"
 
 
 -- | Parse the AEMO CSV files which contain daily data

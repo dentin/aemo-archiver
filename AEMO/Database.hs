@@ -14,8 +14,7 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Resource (ResourceT)
 import           Data.Time                    (ZonedTime, parseTime,
                                                zonedTimeToUTC)
-import           Data.Vector                  (Vector)
-import qualified Data.Vector                  as V (length, mapM_)
+
 import           System.Locale                (defaultTimeLocale)
 
 import           AEMO.Types
@@ -59,15 +58,6 @@ allDbZips = runDB $ do
     return $ map (aemoZipFileFileName . entityVal) es
 
 
-insertCSV :: (String, Vector CSVRow) -> DBMonad ()
-insertCSV (file, vec) = do
-    fid <- insert $ AemoCsvFile (T.pack file) (V.length vec)
-    V.mapM_ (ins fid) vec
-    -- liftIO (putStrLn ("Inserted data from " ++ file))
-    where
-        ins fid r = case csvTupleToPowerStationDatum fid r of
-            Left str -> fail str
-            Right psd -> insert psd
 
 
 -- | Takes a tuple parsed from the AEMO CSV data and produces a PowerStationDatum. Time of recording is
