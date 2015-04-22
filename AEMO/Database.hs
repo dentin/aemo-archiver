@@ -3,6 +3,7 @@
 module AEMO.Database where
 
 import           Database.Persist             (insert)
+import           Database.Persist.Sql         (runSqlPersistMPool)
 import           Database.Persist.Sqlite      (SqlPersistT, runSqlite, runMigration, selectList, entityVal, selectFirst,
                                                (==.))
 import           Data.Text                    (Text)
@@ -10,12 +11,18 @@ import qualified Data.Text             as T   (pack)
 import           Data.Maybe                   (isNothing)
 import           Control.Monad.Logger         (NoLoggingT)
 import           Control.Monad.Trans.Resource (ResourceT)
+import           Control.Monad.IO.Class
 import           Data.Vector                  (Vector)
 import qualified Data.Vector           as V   (length, mapM_)
 import           Data.Time                    (ZonedTime, parseTime, zonedTimeToUTC)
 import           System.Locale                (defaultTimeLocale)
 
 import           AEMO.Types
+
+import           Control.Lens.Getter
+
+import           Control.Monad.Logger
+
 
 
 type CSVRow = ((), (), (), (), String, String, Double)
@@ -26,23 +33,25 @@ dbPath :: Text
 dbPath = "AEMO.sqlite"
 
 
-migrateDb :: IO ()
+migrateDb :: AppM ()
 migrateDb = runDB $ runMigration migrateAll
 
 
-csvNotInDb :: FileName -> IO Bool
+csvNotInDb :: FileName -> AppM Bool
 csvNotInDb f = do
     csv <- runDB $ selectFirst [AemoCsvFileFileName ==. T.pack f] []
     return (isNothing csv)
 
 
 -- | Run the SQL on the sqlite filesystem path
-runDB :: DBMonad a -> IO a
-runDB = runSqlite dbPath
+runDB :: DBMonad a-> AppM a
+runDB act = do
+    conn <- use connPool
+    liftIO $ runSqlPersistMPool act conn
 
 
 -- | Get the names of all known zip files in the database
-allDbZips :: IO [Text]
+allDbZips :: AppM [Text]
 allDbZips = runDB $ do
     es <- selectList [] []
     return $ map (aemoZipFileFileName . entityVal) es

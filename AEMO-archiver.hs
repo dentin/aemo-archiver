@@ -4,7 +4,7 @@
 module Main where
 
 import           Data.ByteString.Lazy         (ByteString, readFile)
-import           Data.ByteString.Lazy  as B   (readFile)
+import qualified Data.ByteString.Lazy  as B
 import           Data.Vector                  (Vector)
 import qualified Data.Vector           as V   (length, mapM_)
 -- TODO: why Char8?
@@ -23,60 +23,71 @@ import           System.Exit                  (ExitCode(ExitFailure), exitWith)
 import           System.IO                    (BufferMode (NoBuffering), hSetBuffering, stdout)
 import           Database.Persist             (insert, count, (==.))
 import           Database.Persist.Types       (Filter)
+import           Database.Persist.Postgresql
 
 import           AEMO.Types
 import           AEMO.WebScraper
 import           AEMO.Database
+
+import           Control.Monad.Logger
 
 
 gensAndLoads :: FilePath
 gensAndLoads = "nem-Generators and Scheduled Loads.csv"
 
 
+dbConn = "host=localhost dbname=aemoarchiver user=aemoarchiver password=weakpass port=5432"
+
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
 
-    -- TODO: auto-migrate and auto-populate-powerstations should be separate tool,
-    -- Database
-    migrateDb
+    runNoLoggingT $ do
+        withPostgresqlPool dbConn 10 $ \conn ->
+            execLoggerAppM (AS conn) $ do
+                -- TODO: auto-migrate and auto-populate-powerstations should be separate tool,
+                -- Database
+                migrateDb
 
-    -- Check if we have any power stations, otherwise initialise them
-    numStations <- runDB $ count ([] :: [Filter PowerStation])
-    when (numStations == 0) $ do
-        exists <- doesFileExist gensAndLoads
-        unless (exists) $ do
-            exitWith $ ExitFailure 1
-        bs <- B.readFile gensAndLoads
-        either error (TODO) $ parseGensAndSchedLoads bs
+                -- Check if we have any power stations, otherwise initialise them
+                numStations <- runDB $ count ([] :: [Filter PowerStation])
+                when (numStations == 0) $ liftIO $ do
+                    exists <- doesFileExist gensAndLoads
+                    unless (exists) $ do
+                        putStrLn $ "File does not exist: " ++ gensAndLoads
+                        exitWith $ ExitFailure 1
+                    bs <- B.readFile gensAndLoads
+                    -- either error (undefined) $ parseGensAndSchedLoads bs
+                    print $ B.length bs
 
 
-    -- Get the names of all known zip files in the database
-    --knownZipFiles <- allDbZips
+                -- Get the names of all known zip files in the database
+                knownZipFiles <- allDbZips
 
-    --fetchArchiveActualLoad knownZipFiles
-    --fetchDaily5mActualLoad knownZipFiles
+                --fetchArchiveActualLoad knownZipFiles
+                fetchDaily5mActualLoad knownZipFiles
+
 
 
 parseGensAndSchedLoads :: ByteString -> Either String (Vector CSVRow)
 parseGensAndSchedLoads bs = undefined
 
 
-fetchDaily5mActualLoad :: [Text] -> IO ()
+fetchDaily5mActualLoad :: [Text] -> AppM ()
 fetchDaily5mActualLoad knownZipFiles = do
-    putStrLn "Finding new 5 minute zips..."
-    zipLinks <- joinLinks aemo5mPSURL
+    liftIO $ putStrLn "Finding new 5 minute zips..."
+    zipLinks <- liftIO $ joinLinks aemo5mPSURL
     retrieve knownZipFiles zipLinks
 
 
-fetchArchiveActualLoad :: [Text] -> IO ()
+fetchArchiveActualLoad :: [Text] -> AppM ()
 fetchArchiveActualLoad knownZipFiles = do
-    putStrLn "Finding new archive zips..."
-    zipLinks <- joinLinks aemoPSArchiveURL
+    liftIO $ putStrLn "Finding new archive zips..."
+    zipLinks <- liftIO $ joinLinks aemoPSArchiveURL
     retrieve knownZipFiles zipLinks
 
 
-retrieve :: [Text] -> [(FileName, URL)] -> IO ()
+retrieve :: [Text] -> [(FileName, URL)] -> AppM ()
 retrieve knownZipFiles zipLinks = do
     -- Filter URLs for only those that haven't been inserted
     let seenfiles = S.fromList knownZipFiles
@@ -85,24 +96,26 @@ retrieve knownZipFiles zipLinks = do
     -- We're done if there aren't any files we haven't loaded yet
     unless (null unseen) $ do
         -- Fetch the contents of the zip files
-        putStrLn ("Fetching " ++ show (length unseen) ++ " new files:")
-        fetched <- fetchFiles unseen
-        putChar '\n'
-        let (ferrs, rslts) = partition' fetched
-        unless (rslts `seq` null ferrs) $
-            putStrLn "Fetch failures:" >> mapM_ print ferrs
-        putStrLn ("Files fetched: " ++ show (length rslts))
+        results <- liftIO $ do
+            putStrLn ("Fetching " ++ show (length unseen) ++ " new files:")
+            fetched <- fetchFiles unseen
+            putChar '\n'
+            let (ferrs, rslts) = partition' fetched
+            unless (rslts `seq` null ferrs) $
+                putStrLn "Fetch failures:" >> mapM_ print ferrs
+            putStrLn ("Files fetched: " ++ show (length rslts))
+            return rslts
 
-        putStrLn "Processing data:"
-        mapM_ (process 10) rslts
-        putStrLn ""
+        liftIO $ putStrLn "Processing data:"
+        mapM_ (process 10) results
+        liftIO $ putStrLn ""
 
 
-process :: Int -> (FileName, ByteString) -> IO ()
+process :: Int -> (FileName, ByteString) -> AppM ()
 process c (fn, bs) =
     if c <= 0
         then do
-            putStrLn ("Recursion limit reached for URL " ++ fn)
+            liftIO $ putStrLn ("Recursion limit reached for URL " ++ fn)
             return ()
         else do
             -- Extract zips from the archive zip files
@@ -112,16 +125,16 @@ process c (fn, bs) =
                     -- Recurse with any new zip files
                     mapM_ (process (c-1)) zextracted
                     runDB $ insert $ AemoZipFile (T.pack fn)
-                    putStrLn ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from file " ++ fn)
+                    liftIO $ putStrLn ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from file " ++ fn)
                 else processCSVs (fn, bs)
 
 
-processCSVs :: (FileName, ByteString) -> IO ()
+processCSVs :: (FileName, ByteString) -> AppM ()
 processCSVs (fn, bs) = do
     -- Extract CSVs from the zip files
     let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ [(fn, bs)]
     unless (extracted `seq` null eerrs) $
-        putStrLn "Extraction failures:" >> mapM_ print eerrs
+        liftIO $ putStrLn "Extraction failures:" >> mapM_ print eerrs
 
     -- Check if CSV is already in db, to avoid new archive zips containing old current CVS files
     newCsvFiles <- filterM (\(f, _) -> csvNotInDb f) extracted
@@ -129,7 +142,7 @@ processCSVs (fn, bs) = do
     -- Parse the CSV files into database types
     let (perrs, parsed) = partition' . map (second parseAEMO) $ newCsvFiles
     unless (parsed `seq` null perrs) $
-        putStrLn "Parsing failures:" >> mapM_ print perrs
+        liftIO $ putStrLn "Parsing failures:" >> mapM_ print perrs
 
     runDB $ do
         -- Insert data into database

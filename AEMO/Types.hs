@@ -10,12 +10,38 @@
 
 module AEMO.Types where
 
-import           Database.Persist.TH (mkPersist, sqlSettings, mkMigrate, persistLowerCase, share)
-import           Data.Text           (Text)
-import           Data.Time 			 (UTCTime)
+import           Data.Text                      (Text)
+import           Data.Time                      (UTCTime)
+import           Database.Persist.TH            (mkMigrate, mkPersist,
+                                                 persistLowerCase, share,
+                                                 sqlSettings)
+
+import           Control.Applicative
+import           Control.Monad.IO.Class
+import           Control.Monad.Trans.State.Lazy
+import 			 Control.Monad.State.Class
+import 			 Control.Monad.Logger
+
+import 			 Database.Persist.Postgresql
+
+import 			 Control.Lens
+
 
 
 type FileName = String
+
+data AppState = AS {_connPool :: ConnectionPool}
+$(makeLenses ''AppState)
+
+newtype AppM a = AppM {runAppM :: StateT AppState (NoLoggingT IO) a}
+	deriving (Functor, Applicative, Monad, MonadIO, MonadState AppState)
+
+
+execApp :: AppState -> AppM a -> IO a
+execApp st (AppM m) = runNoLoggingT $ evalStateT m st
+
+execLoggerAppM :: AppState -> AppM a -> NoLoggingT IO a
+execLoggerAppM st (AppM m) = evalStateT m st
 
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
