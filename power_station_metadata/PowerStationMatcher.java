@@ -18,6 +18,7 @@ public class PowerStationMatcher {
         for (Iterator<Map.Entry<String, String>> it = stations.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<String, String> e = it.next();
             if (manualLocations.containsKey(e.getValue())) {
+                System.out.println(e.getValue() + "," + manualLocations.get(e.getValue()) + ",manual location");
                 it.remove();
             }
         }
@@ -25,24 +26,25 @@ public class PowerStationMatcher {
         // look for AEMO names with matches in the GA list
         for (Iterator<Map.Entry<String, String>> it = stations.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<String, String> e = it.next();
-            final String loc = findMatchingKey(locations, e.getKey());
+            final Match loc = findMatchingKey(locations, e.getKey());
             if (loc != null) {
-                System.out.println(e.getValue() + "," + loc);
+                System.out.println(e.getValue() + "," + loc.value + ",'" + e.getKey() + "' = '" + loc.key + "'");
                 it.remove();
             }
         }
 
         // look for GA names matching in the AEMO list
         for (Map.Entry<String, String> e : locations.entrySet()) {
-            final String station = findMatchingKey(stations, e.getKey());
+            final Match station = findMatchingKey(stations, e.getKey());
             if (station != null) {
-                System.out.println(station + "," + e.getValue());
+                System.out.println(station.value + "," + e.getValue() + ",'" + e.getKey() + "' = '" + station.key + "'");
             }
         }
 
         // find the rest using the Levenshtein distance
         for (Map.Entry<String, String> e : stations.entrySet()) {
-            System.out.println(e.getValue() + "," + minDistanceLocation(locations, e.getKey(), e.getValue()));
+            final Match m = minDistanceLocation(locations, e.getKey(), e.getValue());
+            System.out.println(e.getValue() + "," + m.value + ",'" + e.getKey() + "' = '" + m.key + "'");
         }
     }
 
@@ -88,9 +90,9 @@ public class PowerStationMatcher {
         return m;
     }
 
-    public static String findMatchingKey(final Map<String, String> m, final String key) {
+    public static Match findMatchingKey(final Map<String, String> m, final String key) {
         // straight lookup - 95 matches
-        if (m.containsKey(key)) return m.get(key);
+        if (m.containsKey(key)) return new Match(key, m.get(key));
 
         // cut key down to less and less words - inaccurate but adds about 10 matches
         // this would do better if we also cut down the map keys to be the same number of words
@@ -99,7 +101,7 @@ public class PowerStationMatcher {
             final int index = part.lastIndexOf(" ");
             if (index > 0) {
                 part = part.substring(0, index);
-                if (m.containsKey(part)) return m.get(part);
+                if (m.containsKey(part)) return new Match(part, m.get(part));
             }
             else break;
         }
@@ -107,7 +109,7 @@ public class PowerStationMatcher {
         return null;
     }
 
-    public static String minDistanceLocation(final Map<String, String> m, final String name, final String duid) {
+    public static Match minDistanceLocation(final Map<String, String> m, final String name, final String duid) {
         final SortedMap<Integer, String> distances = new TreeMap<>();
         for (Map.Entry<String, String> e : m.entrySet()) {
             final int distance = LevenshteinDistance.computeLevenshteinDistance(name, e.getKey());
@@ -116,8 +118,7 @@ public class PowerStationMatcher {
         final int lowest = distances.firstKey();
         final String locationName = distances.get(lowest);
         final String location = m.get(locationName);
-        System.out.println(lowest + ": " + duid + ", " + name + " = " + locationName);
-        return location;
+        return new Match(locationName, location);
     }
 
 
@@ -142,6 +143,16 @@ public class PowerStationMatcher {
                             distance[i - 1][j - 1] + ((str1.charAt(i - 1) == str2.charAt(j - 1)) ? 0 : 1));
 
             return distance[str1.length()][str2.length()];
+        }
+    }
+
+    private static class Match {
+        final String key;
+        final String value;
+
+        Match(final String k, final String v) {
+            key = k;
+            value = v;
         }
     }
 }
