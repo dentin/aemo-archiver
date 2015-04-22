@@ -4,14 +4,7 @@ import           Data.ByteString.Lazy        (ByteString)
 import qualified Data.ByteString.Lazy        as B
 import           Data.Vector                 (Vector)
 
-import           Control.Arrow               (second)
-import           Control.Monad               (filterM, unless, when)
-import qualified Data.ByteString.Lazy.Char8  as C (intercalate, lines)
-import           Data.Csv                    (HasHeader (..), decode)
-import           Data.Either                 (partitionEithers)
-import qualified Data.HashSet                as S (fromList, member)
-import           Data.Text                   (Text)
-import qualified Data.Text                   as T (pack)
+import           Control.Monad               (unless, when)
 
 import           System.Directory            (doesFileExist)
 import           System.Exit                 (ExitCode (ExitFailure), exitWith)
@@ -25,7 +18,7 @@ import           Database.Persist.Postgresql
 
 import           AEMO.Database
 import           AEMO.Types
-import           AEMO.WebScraper
+import AEMO.CSV
 
 
 
@@ -58,7 +51,10 @@ main = do
                 -- Get the names of all known zip files in the database
                 knownZipFiles <- allDbZips
 
-                return ()
-
-                -- fetchArchiveActualLoad knownZipFiles
+                fetchArchiveActualLoad knownZipFiles
                 -- fetchDaily5mActualLoad knownZipFiles
+                --
+
+
+parseGensAndSchedLoads :: ByteString -> Either String (Vector CSVRow)
+parseGensAndSchedLoads _bs = undefined
