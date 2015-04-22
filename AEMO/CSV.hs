@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module AEMO.CSV where
 
@@ -20,20 +21,22 @@ import           Control.Monad.IO.Class      (liftIO)
 
 import           Database.Persist.Postgresql
 
+import Control.Monad.Logger
+
 import           AEMO.Database
 import           AEMO.Types
 import           AEMO.WebScraper
 
 fetchDaily5mActualLoad :: [Text] -> AppM ()
 fetchDaily5mActualLoad knownZipFiles = do
-    liftIO $ putStrLn "Finding new 5 minute zips..."
+    $(logInfo) "Finding new 5 minute zips..."
     zipLinks <- liftIO $ joinLinks aemo5mPSURL
     retrieve knownZipFiles zipLinks
 
 
 fetchArchiveActualLoad :: [Text] -> AppM ()
 fetchArchiveActualLoad knownZipFiles = do
-    liftIO $ putStrLn "Finding new archive zips..."
+    $(logInfo) "Finding new archive zips..."
     zipLinks <- liftIO $ joinLinks aemoPSArchiveURL
     retrieve knownZipFiles zipLinks
 
@@ -47,26 +50,26 @@ retrieve knownZipFiles zipLinks = do
     -- We're done if there aren't any files we haven't loaded yet
     unless (null unseen) $ do
         -- Fetch the contents of the zip files
-        results <- liftIO $ do
-            putStrLn ("Fetching " ++ show (length unseen) ++ " new files:")
-            fetched <- fetchFiles unseen
-            putChar '\n'
-            let (ferrs, rslts) = partition' fetched
-            unless (rslts `seq` null ferrs) $
-                putStrLn "Fetch failures:" >> mapM_ print ferrs
-            putStrLn ("Files fetched: " ++ show (length rslts))
-            return rslts
 
-        liftIO $ putStrLn "Processing data:"
-        mapM_ (process 10) results
-        liftIO $ putStrLn ""
+        $(logInfo) $ T.pack ("Fetching " ++ show (length unseen) ++ " new files:")
+        fetched <- liftIO $ fetchFiles unseen
+        $(logInfo) "Done fetching new files"
+        let (ferrs, rslts) = partition' fetched
+        unless (rslts `seq` null ferrs) $ do
+            $(logWarn) "Fetch failures:"
+            mapM_ ($(logInfo) . T.pack . show) ferrs
+        $(logInfo) $ T.pack ("Files fetched: " ++ show (length rslts))
+
+        $(logInfo) "Processing data:"
+        mapM_ (process 10) rslts
+        $(logInfo) "Done processing data"
 
 
 process :: Int -> (FileName, ByteString) -> AppM ()
 process c (fn, bs) =
     if c <= 0
         then do
-            liftIO $ putStrLn ("Recursion limit reached for URL " ++ fn)
+            $(logWarn) $ T.pack ("Recursion limit reached for URL " ++ fn)
             return ()
         else do
             -- Extract zips from the archive zip files
@@ -76,7 +79,7 @@ process c (fn, bs) =
                     -- Recurse with any new zip files
                     mapM_ (process (c-1)) zextracted
                     runDB $ insert $ AemoZipFile (T.pack fn)
-                    liftIO $ putStrLn ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from file " ++ fn)
+                    $(logInfo) $ T.pack ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from file " ++ fn)
                 else processCSVs (fn, bs)
 
 
@@ -84,16 +87,18 @@ processCSVs :: (FileName, ByteString) -> AppM ()
 processCSVs (fn, bs) = do
     -- Extract CSVs from the zip files
     let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ [(fn, bs)]
-    unless (extracted `seq` null eerrs) $
-        liftIO $ putStrLn "Extraction failures:" >> mapM_ print eerrs
+    unless (extracted `seq` null eerrs) $ do
+        $(logWarn) "Extraction failures:"
+        mapM_ (\x -> $(logWarn) $ T.pack . show $ x) eerrs
 
     -- Check if CSV is already in db, to avoid new archive zips containing old current CVS files
     newCsvFiles <- filterM (\(f, _) -> csvNotInDb f) extracted
 
     -- Parse the CSV files into database types
     let (perrs, parsed) = partition' . map (second parseAEMO) $ newCsvFiles
-    unless (parsed `seq` null perrs) $
-        liftIO $ putStrLn "Parsing failures:" >> mapM_ print perrs
+    unless (parsed `seq` null perrs) $ do
+        $(logWarn) "Parsing failures:"
+        mapM_ (\x -> $(logWarn) $ T.pack . show $ x) perrs
 
     runDB $ do
         -- Insert data into database

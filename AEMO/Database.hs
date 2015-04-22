@@ -46,8 +46,10 @@ csvNotInDb f = do
 -- | Run the SQL on the sqlite filesystem path
 runDB :: DBMonad a-> AppM a
 runDB act = do
-    conn <- use connPool
-    liftIO $ runSqlPersistMPool act conn
+    mconn <- use connPool
+    case mconn of
+        Just conn -> liftIO $ runSqlPersistMPool act conn
+        Nothing -> error "runDB: no database connection found!"
 
 
 -- | Get the names of all known zip files in the database

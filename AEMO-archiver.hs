@@ -7,24 +7,24 @@ module Main where
 import           System.IO                   (BufferMode (NoBuffering),
                                               hSetBuffering, stdout)
 
-import           Control.Monad.Logger
-
 import           Database.Persist.Postgresql
 
+import           AEMO.CSV
 import           AEMO.Database
 import           AEMO.Types
-import AEMO.CSV
+
+import           Control.Lens
 
 
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
 
-    runNoLoggingT $ do
-        withPostgresqlPool dbConn 10 $ \conn ->
-            execLoggerAppM (AS conn) $ do
-                -- Get the names of all known zip files in the database
-                knownZipFiles <- allDbZips
+    execAppM (AS Nothing makeLog) $ do
+        withPostgresqlPool dbConn 10 $ \conn -> do
+            connPool ?= conn
+            -- Get the names of all known zip files in the database
+            knownZipFiles <- allDbZips
 
-                fetchDaily5mActualLoad knownZipFiles
+            fetchDaily5mActualLoad knownZipFiles
 

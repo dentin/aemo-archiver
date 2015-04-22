@@ -85,7 +85,10 @@ executable AEMO-archiver
                         time-units            >= 1.0      && < 1.1,
                         persistent-postgresql >= 2.1      && < 2.2,
                         lens                  >= 4.8      && < 5.0,
-                        mtl                   >= 2.2      && < 2.3
+                        mtl                   >= 2.2      && < 2.3,
+                        fast-logger           >= 2.3      && < 2.4,
+                        transformers-base     >= 0.4      && < 0.5
+
 
   -- Directories containing source files.
   -- hs-source-dirs:
@@ -132,7 +135,9 @@ executable initDB
                         time-units            >= 1.0      && < 1.1,
                         persistent-postgresql >= 2.1      && < 2.2,
                         lens                  >= 4.8      && < 5.0,
-                        mtl                   >= 2.2      && < 2.3
+                        mtl                   >= 2.2      && < 2.3,
+                        fast-logger           >= 2.3      && < 2.4,
+                        transformers-base     >= 0.4      && < 0.5
 
   -- Directories containing source files.
   -- hs-source-dirs:
