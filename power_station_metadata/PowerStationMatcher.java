@@ -12,14 +12,14 @@ public class PowerStationMatcher {
      */
     public static void main(String[] args) throws Exception {
         final Map<String, String> manualLocations = readCsv(args[0], 0, 1);
-        final Map<String, String> stations = readCsv(args[1], 1, 13, 1); // AEMO Generators list has a header
+        final Map<String, String> stations = readCsv(args[1], 13, 1, 1); // AEMO Generators list has a header
         final Map<String, String> locations = readCsv(args[2], 0, 1);
 
         // first remove matches we already have in the manual list from the AEMO station list
         for (Iterator<Map.Entry<String, String>> it = stations.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<String, String> e = it.next();
-            if (manualLocations.containsKey(e.getValue())) {
-                System.out.println(e.getValue() + "," + manualLocations.get(e.getValue()) + ",manual location");
+            if (manualLocations.containsKey(e.getKey())) {
+                System.out.println(e.getKey() + "," + manualLocations.get(e.getKey()) + ",manual location");
                 it.remove();
             }
         }
@@ -27,17 +27,17 @@ public class PowerStationMatcher {
         // look for AEMO names with matches in the GA list
         for (Iterator<Map.Entry<String, String>> it = stations.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<String, String> e = it.next();
-            final Match loc = findMatchingKey(locations, e.getKey());
+            final Match loc = findMatchingKey(locations, e.getValue());
             if (loc != null) {
-                System.out.println(e.getValue() + "," + loc.value + ",'" + e.getKey() + "' = '" + loc.key + "'");
+                System.out.println(e.getKey() + "," + loc.value + ",'" + e.getValue() + "' = '" + loc.key + "'");
                 it.remove();
             }
         }
 
         // find the rest using the Levenshtein distance
         for (Map.Entry<String, String> e : stations.entrySet()) {
-            final Match m = minDistanceLocation(locations, e.getKey(), e.getValue());
-            System.out.println(e.getValue() + "," + m.value + ",'" + e.getKey() + "' = '" + m.key + "'");
+            final Match m = minDistanceLocation(locations, e.getValue(), e.getKey());
+            System.out.println(e.getKey() + "," + m.value + ",'" + e.getValue() + "' = '" + m.key + "'");
         }
     }
 
@@ -67,20 +67,27 @@ public class PowerStationMatcher {
             final String[] parts = line.split(",");
 
             // sanitise
-            String value = parts[valueCol];
-            if ("-".equals(value)) continue;
-            if (value.trim().isEmpty()) continue;
-            value = value.replaceAll("\"", "");
-            String key = parts[keyCol].replaceAll("[\"()]", ""); // remove quotes
-            key = key.replaceAll(" (Gas Power Station|Power Station|Station|Power Plant|Generation Plant|Plant)", "");
-            key = key.replaceAll(" (Wind Farm|Solar Farm|Solar Park)", "");
-            key = key.replaceAll(" (Waste Disposal Facility|Renewable Energy Facility|Energy Facility|Facility)", "");
-            key = key.replaceAll(" (Gas Turbine|Landfill|Hydro|GT)", "");
+            final String key = sanitise(parts[keyCol]);
+            final String value = sanitise(parts[valueCol]);
 
-            m.put(key.trim(), value.trim());
+            if (key != null && value != null && !m.containsKey(key)) m.put(key, value);
         }
         r.close();
         return m;
+    }
+
+    private static String sanitise(final String v) {
+            final String sanitised = v.replaceAll("\"", "")
+                .replaceAll("[\"()]", "")
+                .replaceAll(" (Gas Power Station|Power Station|Station|Power Plant|Generation Plant|Plant)", "")
+                .replaceAll(" (Wind Farm|Solar Farm|Solar Park)", "")
+                .replaceAll(" (Waste Disposal Facility|Renewable Energy Facility|Energy Facility|Facility)", "")
+                .replaceAll(" (Gas Turbine|Landfill|Hydro|GT)", "")
+                .trim();
+
+            if ("-".equals(sanitised)) return null;
+            if (sanitised.isEmpty()) return null;
+            return sanitised;
     }
 
     public static Match findMatchingKey(final Map<String, String> m, final String key) {
