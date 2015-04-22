@@ -67,7 +67,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 	AemoCsvFile
 		fileName Text
 		recordsInserted Int
-		UniqueAEMOFile fileName
+		UniqueAemoFile fileName
 
 	AemoZipFile
 		fileName Text
