@@ -1,24 +1,28 @@
-{-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE TupleSections #-}
 
 module AEMO.WebScraper where
 
-import           Network.HTTP                 (Request, Response, HStream, getRequest, rspBody,
-                                               getAuth, failHTTPS, openStream, host, port,
-                                               normalizeRequest, defaultNormalizeRequestOptions,
-                                               rqBody, rqURI, normDoClose, simpleHTTP_)
-import           Network.Stream               (ConnError (..), Result)
-import           Network.URI                  (parseURI, parseURIReference, relativeTo, escapeURIString)
-import           Text.HTML.TagSoup            (Tag (TagOpen), parseTags)
-import           Data.Char                    (toLower)
-import           Data.Maybe                   (fromMaybe, mapMaybe)
-import           Data.List                    (isSuffixOf, isInfixOf)
-import           Data.ByteString.Lazy         (ByteString)
-import qualified Data.ByteString.Lazy  as BSL (empty)
-import           Control.Exception            (SomeException, catch)
-import           Codec.Archive.Zip            (toArchive, filesInArchive, findEntryByPath, fromEntry)
-import           Control.DeepSeq              (NFData, deepseq)
-import           Data.List.Split              (splitOn)
-import           AEMO.Types                   (FileName)
+import           AEMO.Types           (FileName)
+import           Codec.Archive.Zip    (filesInArchive, findEntryByPath,
+                                       fromEntry, toArchive)
+import           Control.DeepSeq      (NFData, deepseq)
+import           Control.Exception    (SomeException, catch)
+import           Data.ByteString.Lazy (ByteString)
+import qualified Data.ByteString.Lazy as BSL (empty)
+import           Data.Char            (toLower)
+import           Data.List            (isSuffixOf)
+import           Data.List.Split      (splitOn)
+import           Data.Maybe           (fromMaybe, mapMaybe)
+import           Network.HTTP         (HStream, Request, Response,
+                                       defaultNormalizeRequestOptions,
+                                       failHTTPS, getAuth, getRequest, host,
+                                       normDoClose, normalizeRequest,
+                                       openStream, port, rqBody, rqURI, rspBody,
+                                       simpleHTTP_)
+import           Network.Stream       (ConnError (..), Result)
+import           Network.URI          (escapeURIString, parseURI,
+                                       parseURIReference, relativeTo)
+import           Text.HTML.TagSoup    (Tag (TagOpen), parseTags)
 
 type URL = String
 

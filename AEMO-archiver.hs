@@ -3,39 +3,39 @@
 
 module Main where
 
-import           Data.ByteString.Lazy         (ByteString, readFile)
-import qualified Data.ByteString.Lazy  as B
-import           Data.Vector                  (Vector)
-import qualified Data.Vector           as V   (length, mapM_)
+import           Data.ByteString.Lazy        (ByteString)
+import qualified Data.ByteString.Lazy        as B
+import           Data.Vector                 (Vector)
 -- TODO: why Char8?
-import qualified Data.ByteString.Lazy.Char8 as C (intercalate, lines)
-import qualified Data.HashSet          as S   (fromList, member)
-import           Data.Text                    (Text)
-import qualified Data.Text             as T   (pack)
-import           Data.Csv                     (HasHeader (..), decode)
-import           Control.Arrow                (second)
-import           Control.Monad                (forM_, unless, filterM, when, liftM)
-import           Data.Either                  (partitionEithers)
-import           Data.List.Split              (chunksOf)
-import           Control.Monad.IO.Class       (liftIO)
-import           System.Directory             (doesFileExist)
-import           System.Exit                  (ExitCode(ExitFailure), exitWith)
-import           System.IO                    (BufferMode (NoBuffering), hSetBuffering, stdout)
-import           Database.Persist             (insert, count, (==.))
-import           Database.Persist.Types       (Filter)
+import           Control.Arrow               (second)
+import           Control.Monad               (filterM, unless, when)
+import qualified Data.ByteString.Lazy.Char8  as C (intercalate, lines)
+import           Data.Csv                    (HasHeader (..), decode)
+import           Data.Either                 (partitionEithers)
+import qualified Data.HashSet                as S (fromList, member)
+import           Data.Text                   (Text)
+import qualified Data.Text                   as T (pack)
+-- import           Data.List.Split              (chunksOf)
+import           System.Directory            (doesFileExist)
+import           System.Exit                 (ExitCode (ExitFailure), exitWith)
+import           System.IO                   (BufferMode (NoBuffering),
+                                              hSetBuffering, stdout)
+
+import           Control.Monad.IO.Class      (liftIO)
+import           Control.Monad.Logger
+
 import           Database.Persist.Postgresql
 
+import           AEMO.Database
 import           AEMO.Types
 import           AEMO.WebScraper
-import           AEMO.Database
 
-import           Control.Monad.Logger
 
 
 gensAndLoads :: FilePath
 gensAndLoads = "nem-Generators and Scheduled Loads.csv"
 
-
+dbConn :: ConnectionString
 dbConn = "host=localhost dbname=aemoarchiver user=aemoarchiver password=weakpass port=5432"
 
 main :: IO ()
@@ -70,7 +70,7 @@ main = do
 
 
 parseGensAndSchedLoads :: ByteString -> Either String (Vector CSVRow)
-parseGensAndSchedLoads bs = undefined
+parseGensAndSchedLoads _bs = undefined
 
 
 fetchDaily5mActualLoad :: [Text] -> AppM ()

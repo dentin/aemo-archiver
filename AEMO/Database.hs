@@ -3,18 +3,20 @@
 module AEMO.Database where
 
 import           Database.Persist             (insert)
-import           Database.Persist.Sql         (runSqlPersistMPool)
-import           Database.Persist.Sqlite      (SqlPersistT, runSqlite, runMigration, selectList, entityVal, selectFirst,
-                                               (==.))
-import           Data.Text                    (Text)
-import qualified Data.Text             as T   (pack)
+import           Database.Persist.Sql         (SqlPersistT, entityVal,
+                                               runMigration, runSqlPersistMPool,
+                                               selectFirst, selectList, (==.))
+
 import           Data.Maybe                   (isNothing)
-import           Control.Monad.Logger         (NoLoggingT)
-import           Control.Monad.Trans.Resource (ResourceT)
+import           Data.Text                    (Text)
+import qualified Data.Text                    as T (pack)
+-- import           Control.Monad.Logger         (NoLoggingT)
 import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Resource (ResourceT)
+import           Data.Time                    (ZonedTime, parseTime,
+                                               zonedTimeToUTC)
 import           Data.Vector                  (Vector)
-import qualified Data.Vector           as V   (length, mapM_)
-import           Data.Time                    (ZonedTime, parseTime, zonedTimeToUTC)
+import qualified Data.Vector                  as V (length, mapM_)
 import           System.Locale                (defaultTimeLocale)
 
 import           AEMO.Types
