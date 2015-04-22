@@ -34,14 +34,6 @@ public class PowerStationMatcher {
             }
         }
 
-        // look for GA names matching in the AEMO list
-        for (Map.Entry<String, String> e : locations.entrySet()) {
-            final Match station = findMatchingKey(stations, e.getKey());
-            if (station != null) {
-                System.out.println(station.value + "," + e.getValue() + ",'" + e.getKey() + "' = '" + station.key + "'");
-            }
-        }
-
         // find the rest using the Levenshtein distance
         for (Map.Entry<String, String> e : stations.entrySet()) {
             final Match m = minDistanceLocation(locations, e.getKey(), e.getValue());
