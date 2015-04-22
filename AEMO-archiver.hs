@@ -4,11 +4,11 @@
 module Main where
 
 import           Data.ByteString.Lazy        (ByteString)
-import qualified Data.ByteString.Lazy        as B
+-- import qualified Data.ByteString.Lazy        as B
 import           Data.Vector                 (Vector)
 -- TODO: why Char8?
 import           Control.Arrow               (second)
-import           Control.Monad               (filterM, unless, when)
+import           Control.Monad               (filterM, unless)
 import qualified Data.ByteString.Lazy.Char8  as C (intercalate, lines)
 import           Data.Csv                    (HasHeader (..), decode)
 import           Data.Either                 (partitionEithers)
@@ -16,8 +16,6 @@ import qualified Data.HashSet                as S (fromList, member)
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T (pack)
 -- import           Data.List.Split              (chunksOf)
-import           System.Directory            (doesFileExist)
-import           System.Exit                 (ExitCode (ExitFailure), exitWith)
 import           System.IO                   (BufferMode (NoBuffering),
                                               hSetBuffering, stdout)
 
@@ -32,11 +30,6 @@ import           AEMO.WebScraper
 
 
 
-gensAndLoads :: FilePath
-gensAndLoads = "nem-Generators and Scheduled Loads.csv"
-
-dbConn :: ConnectionString
-dbConn = "host=localhost dbname=aemoarchiver user=aemoarchiver password=weakpass port=5432"
 
 main :: IO ()
 main = do
@@ -45,26 +38,9 @@ main = do
     runNoLoggingT $ do
         withPostgresqlPool dbConn 10 $ \conn ->
             execLoggerAppM (AS conn) $ do
-                -- TODO: auto-migrate and auto-populate-powerstations should be separate tool,
-                -- Database
-                migrateDb
-
-                -- Check if we have any power stations, otherwise initialise them
-                numStations <- runDB $ count ([] :: [Filter PowerStation])
-                when (numStations == 0) $ liftIO $ do
-                    exists <- doesFileExist gensAndLoads
-                    unless (exists) $ do
-                        putStrLn $ "File does not exist: " ++ gensAndLoads
-                        exitWith $ ExitFailure 1
-                    bs <- B.readFile gensAndLoads
-                    -- either error (undefined) $ parseGensAndSchedLoads bs
-                    print $ B.length bs
-
-
                 -- Get the names of all known zip files in the database
                 knownZipFiles <- allDbZips
 
-                --fetchArchiveActualLoad knownZipFiles
                 fetchDaily5mActualLoad knownZipFiles
 
 

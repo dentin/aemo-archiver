@@ -2,10 +2,9 @@
 
 module AEMO.Database where
 
-import           Database.Persist             (insert)
-import           Database.Persist.Sql         (SqlPersistT, entityVal,
-                                               runMigration, runSqlPersistMPool,
-                                               selectFirst, selectList, (==.))
+-- import           Database.Persist.Sql         (SqlPersistT, entityVal,
+--                                                runMigration, runSqlPersistMPool,
+--                                                selectFirst, selectList, (==.))
 
 import           Data.Maybe                   (isNothing)
 import           Data.Text                    (Text)
@@ -25,14 +24,13 @@ import           Control.Lens.Getter
 
 import           Control.Monad.Logger
 
+import           Database.Persist.Postgresql
 
+dbConn :: ConnectionString
+dbConn = "host=localhost dbname=aemoarchiver user=aemoarchiver password=weakpass port=5432"
 
 type CSVRow = ((), (), (), (), String, String, Double)
 type DBMonad a = SqlPersistT (NoLoggingT (ResourceT IO)) a
-
-
-dbPath :: Text
-dbPath = "AEMO.sqlite"
 
 
 migrateDb :: AppM ()
