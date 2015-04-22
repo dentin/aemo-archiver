@@ -17,7 +17,7 @@ import qualified Data.ByteString.Lazy  as BSL (empty)
 import           Control.Exception            (SomeException, catch)
 import           Codec.Archive.Zip            (toArchive, filesInArchive, findEntryByPath, fromEntry)
 import           Control.DeepSeq              (NFData, deepseq)
-import           Data.String.Utils            (split)
+import           Data.List.Split              (splitOn)
 import           AEMO.Types                   (FileName)
 
 type URL = String
@@ -107,5 +107,5 @@ simpleHTTPSafe r = do
 
 
 filename :: URL -> String
-filename url = last (split "/" url)
+filename url = last (splitOn "/" url)
 
