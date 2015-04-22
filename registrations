@@ -5,7 +5,8 @@
 
 # All intermediate and final data ends up in here:
 PSDIR='power_station_metadata'
-POWER_STATION_LOCATIONS_CSV="${PSDIR}/power_station_locations.csv"
+MANUAL_LOCATIONS='manual_station_locations.csv'
+POWER_STATION_LOCATIONS_CSV='power_station_locations.csv'
 
 # Download the AEMO Registration and Exemption list for the NEM, and extract the Generators list.
 #
@@ -19,14 +20,16 @@ BASE_URL='http://www.aemo.com.au/About-the-Industry/Registration/Current-Registr
 # What to name the file when downloaded
 EXCEL_FILE_NAME="${PSDIR}/Registration_and_Exemption_List.xls"
 # Grab the URL of the file out of the HTML, convert spaces to %20
-FILE_PART_URL=$(curl --silent ${BASE_URL} | perl -ne '/a href="(.+)">Registration and Exemption List</ && print $1' | perl -pe 's/ /%20/g')
+echo "Finding the URL of the AEMO Registration_and_Exemption_List"
+FILE_PART_URL=$(curl --silent "${BASE_URL}" | perl -ne '/a href="(.+)">Registration and Exemption List</ && print $1' | perl -pe 's/ /%20/g')
 
-# Get the file
-curl --silent -o ${EXCEL_FILE_NAME} "${BASE_URL}/${FILE_PART_URL}"
-# Export each sheet to a CSV file
-ssconvert --export-file-per-sheet ${EXCEL_FILE_NAME} "${PSDIR}/nem-%s.csv"
+echo "Getting the actual list"
+curl --silent -o "${EXCEL_FILE_NAME}" "${BASE_URL}/${FILE_PART_URL}"
+echo "Export each sheet to a CSV file"
+ssconvert --export-file-per-sheet "${EXCEL_FILE_NAME}" "${PSDIR}/nem-%s.csv"
 
 # The interesting output file should be called 'nem-Generators and Scheduled Loads.csv' (unless they've changed the spreadsheet).
+AEMO_GENS_LOADS='nem-Generators and Scheduled Loads.csv'
 
 
 # Download the Geoscience Australia list of power stations and extract the locations.
@@ -42,9 +45,24 @@ GA_PS_FILE="${PSDIR}/GA_power_stations.gml"
 # XSLT stylesheet to extract power station name and lat/long from the GA WFS data
 GA_PS_XSLT="${PSDIR}/GA_power_station_latlong.xsl"
 # Put the "name,lat long" data in here
-GA_PS_LATLONG="${PSDIR}/GA_power_station_locations.csv"
+GA_PS_LATLONG='GA_power_station_locations.csv'
 
-# Download the GA WFS data
-curl --silent -o ${GA_PS_FILE} "${GA_PS_URL}"
-# Extract the names and lat/longs
-xsltproc ${GA_PS_XSLT} ${GA_PS_FILE} > ${GA_PS_LATLONG}
+echo "Download the Geoscience Australia ASEIS Power Station WFS data"
+curl --silent -o "${GA_PS_FILE}" "${GA_PS_URL}"
+echo "Extract the names and lat/longs using XSLT"
+xsltproc "${GA_PS_XSLT}" "${GA_PS_FILE}" > "${PSDIR}/${GA_PS_LATLONG}"
+
+
+# Run the Java tool that tries to match up AEMO stations with GA locations, or else uses a manual match.
+#
+# Dependencies:
+#   Java JDK
+
+echo "Compile and run the Java location matcher"
+cd "${PSDIR}" \
+    && javac PowerStationMatcher.java \
+    && java PowerStationMatcher "${MANUAL_LOCATIONS}" "${AEMO_GENS_LOADS}" "${GA_PS_LATLONG}" > "${POWER_STATION_LOCATIONS_CSV}"
+cd -
+
+echo "Power stations with locations: "
+wc -l ${PSDIR}/${POWER_STATION_LOCATIONS_CSV}
