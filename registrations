@@ -13,7 +13,7 @@
 #   perl (simpler tools like sed have different command line switches between GNU/Linux and BSD/OSX)
 #   Gnumeric
 #   xsltproc
-#   Java JDK
+#   Java 7 JDK
 
 # All intermediate and final data ends up in here:
 PSDIR='power_station_metadata'
