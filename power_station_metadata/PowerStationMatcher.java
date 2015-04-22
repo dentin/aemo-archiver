@@ -10,7 +10,7 @@ public class PowerStationMatcher {
 
 
     public static void main(String[] args) throws Exception {
-        final Map<String, String> stations = readCsv(AEMO_GENERATORS_CSV, 1, 13);
+        final Map<String, String> stations = readCsv(AEMO_GENERATORS_CSV, 1, 13, 1);
         final Map<String, String> locations = readCsv(GA_STATION_LOCATIONS_CSV, 0, 1);
         final Map<String, String> manualLocations = readCsv(MANUAL_LIST, 0, 1);
 
@@ -46,9 +46,23 @@ public class PowerStationMatcher {
         }
     }
 
-    // read two columns of a CSV into a key/value map - not fully CSV compliant and filters certain things out
     public static Map<String, String> readCsv(final String filename, final int keyCol, final int valueCol) throws Exception {
+        return readCsv(filename, keyCol, valueCol, 0);
+    }
+
+    // read two columns of a CSV into a key/value map - not fully CSV compliant and filters certain things out
+    public static Map<String, String> readCsv(final String filename, final int keyCol, final int valueCol, final int discardNumInit)
+            throws Exception {
+
         final BufferedReader r = new BufferedReader(new FileReader(filename));
+
+        // discard any initial (header) lines
+        if (discardNumInit > 0) {
+            for (int i = 0; i < discardNumInit; i++) {
+                r.readLine();
+            }
+        }
+
         final Map<String, String> m = new HashMap<>();
         for (String line; (line = r.readLine()) != null; ) {
             // there are columns with commas in them, we need to remove them so we don't screw up splitting
@@ -62,7 +76,7 @@ public class PowerStationMatcher {
             if ("-".equals(value)) continue;
             if (value.trim().isEmpty()) continue;
             value = value.replaceAll("\"", "");
-            String key = parts[keyCol].replaceAll("[\"/()]", ""); // remove quotes
+            String key = parts[keyCol].replaceAll("[\"()]", ""); // remove quotes
             key = key.replaceAll(" (Gas Power Station|Power Station|Station|Power Plant|Generation Plant|Plant)", "");
             key = key.replaceAll(" (Wind Farm|Solar Farm|Solar Park)", "");
             key = key.replaceAll(" (Waste Disposal Facility|Renewable Energy Facility|Energy Facility|Facility)", "");
