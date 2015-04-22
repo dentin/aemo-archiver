@@ -4,15 +4,16 @@ import java.util.*;
 // Brute force power station to location matcher
 public class PowerStationMatcher {
 
-    static final String AEMO_GENERATORS_CSV = "nem-Generators and Scheduled Loads.csv";
-    static final String GA_STATION_LOCATIONS_CSV = "GA_power_station_locations.csv";
-    static final String MANUAL_LIST = "manual_station_locations.csv";
-
-
+    /**
+     * This takes 3 command line arguments:
+     *   0: manual_station_locations.csv
+     *   1: nem-Generators and Scheduled Loads.csv
+     *   2: GA_power_station_locations.csv
+     */
     public static void main(String[] args) throws Exception {
-        final Map<String, String> stations = readCsv(AEMO_GENERATORS_CSV, 1, 13, 1);
-        final Map<String, String> locations = readCsv(GA_STATION_LOCATIONS_CSV, 0, 1);
-        final Map<String, String> manualLocations = readCsv(MANUAL_LIST, 0, 1);
+        final Map<String, String> manualLocations = readCsv(args[0], 0, 1);
+        final Map<String, String> stations = readCsv(args[1], 1, 13, 1); // AEMO Generators list has a header
+        final Map<String, String> locations = readCsv(args[2], 0, 1);
 
         // first remove matches we already have in the manual list from the AEMO station list
         for (Iterator<Map.Entry<String, String>> it = stations.entrySet().iterator(); it.hasNext(); ) {
