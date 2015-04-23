@@ -115,4 +115,9 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
         file AemoCsvFileId
         deriving Show
 
+    DuidLocation
+        duid    Text
+        lat     Double
+        lon     Double
+        comment Text
     |]
