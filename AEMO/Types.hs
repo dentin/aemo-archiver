@@ -37,8 +37,9 @@ import           System.Log.FastLogger
 
 type FileName = String
 
-data AppState = AS {_connPool :: Maybe ConnectionPool,
-                    _logger   :: Loc -> LogSource -> LogLevel -> LogStr -> IO ()}
+data AppState = AS {_connPool :: Maybe ConnectionPool
+                    ,_logger   :: LogLevel -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
+                    ,_minLogLevel :: LogLevel}
 $(makeLenses ''AppState)
 
 newtype AppM a = AppM {runAppM :: StateT AppState IO a}
@@ -49,10 +50,14 @@ newtype AppM a = AppM {runAppM :: StateT AppState IO a}
 instance MonadLogger AppM where
     monadLoggerLog loc src lev msg = do
         lg <- use logger
-        liftIO $ lg loc src lev (toLogStr msg)
+        minLog <- use minLogLevel
+        liftIO $ lg minLog loc src lev (toLogStr msg)
 
 instance MonadLoggerIO AppM where
-    askLoggerIO = use logger
+    askLoggerIO = do
+        lg <- use logger
+        minLog <- use minLogLevel
+        return $ lg minLog
 
 -- The following is voo doo stolen from
 -- https://github.com/lfairy/haskol/blob/master/Web/KoL/Core.hs#L58
@@ -69,8 +74,8 @@ execAppM :: AppState -> AppM a -> IO a
 -- execApp st (AppM m) = runNoLoggingT $ evalStateT m st
 execAppM st (AppM m) = evalStateT m st
 
-makeLog :: Loc -> LogSource -> LogLevel -> LogStr -> IO ()
-makeLog loc src lev str = if lev >= LevelDebug
+makeLog :: LogLevel -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
+makeLog minLev loc src lev str = if lev >= minLev
     then B.putStrLn . fromLogStr $ defaultLogStr loc src lev str
     else return ()
 

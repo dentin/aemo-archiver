@@ -21,6 +21,7 @@ import           AEMO.Types
 
 import           Control.Lens
 
+import Control.Monad.Logger (LogLevel(..))
 
 
 gensAndLoads :: FilePath
@@ -32,7 +33,7 @@ main = do
     hSetBuffering stdout NoBuffering
 
     -- runNoLoggingT $ do
-    execAppM (AS Nothing makeLog) $ do
+    execAppM (AS Nothing makeLog LevelDebug) $ do
         withPostgresqlPool dbConn 10 $ \conn -> do
             connPool ?= conn
 
