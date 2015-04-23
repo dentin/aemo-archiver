@@ -17,7 +17,7 @@ import           Database.Persist.Postgresql
 
 import           AEMO.Database
 import           AEMO.Types
--- import AEMO.CSV
+import AEMO.CSV
 
 import           Control.Lens
 
@@ -52,11 +52,10 @@ main = do
 
 
             -- Get the names of all known zip files in the database
-            -- knownZipFiles <- allDbZips
+            knownZipFiles <- allDbZips
 
-            -- fetchArchiveActualLoad knownZipFiles
-            -- fetchDaily5mActualLoad knownZipFiles
-            --
+            fetchArchiveActualLoad knownZipFiles
+            fetchDaily5mActualLoad knownZipFiles
 
 
 parseGensAndSchedLoads :: ByteString -> Either String (Vector CSVRow)
