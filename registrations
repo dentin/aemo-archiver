@@ -13,7 +13,7 @@
 #   perl (simpler tools like sed have different command line switches between GNU/Linux and BSD/OSX)
 #   Gnumeric
 #   xsltproc
-#   Java JDK
+#   Java 7 JDK
 
 # All intermediate and final data ends up in here:
 PSDIR='power_station_metadata'
@@ -56,7 +56,7 @@ xsltproc "${GA_PS_XSLT}" "${GA_PS_FILE}" > "${PSDIR}/${GA_PS_LATLONG}"
 echo "Compile and run the Java location matcher"
 cd "${PSDIR}" \
     && javac PowerStationMatcher.java \
-    && java PowerStationMatcher "${MANUAL_LOCATIONS}" "${AEMO_GENS_LOADS}" "${GA_PS_LATLONG}" > "${POWER_STATION_LOCATIONS_CSV}"
+    && java PowerStationMatcher "${MANUAL_LOCATIONS}" "${AEMO_GENS_LOADS}" "${GA_PS_LATLONG}" | sort > "${POWER_STATION_LOCATIONS_CSV}"
 cd -
 
 echo "Power stations with locations: "
