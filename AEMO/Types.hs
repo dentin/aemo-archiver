@@ -7,6 +7,7 @@
 {-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module AEMO.Types where
 
@@ -27,11 +28,13 @@ import           Control.Monad.Trans.State.Lazy
 
 import           Database.Persist.Postgresql
 
-import           Control.Lens
+import           Control.Lens hiding ((.=))
 
 import qualified Data.ByteString                as B
 
 import           System.Log.FastLogger
+
+import Data.Csv
 
 
 
@@ -120,4 +123,57 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
         lat     Double
         lon     Double
         comment Text
+        UniqueDuidLocation duid
     |]
+
+
+instance ToNamedRecord PowerStation where
+    toNamedRecord (PowerStation {..}) = namedRecord [
+        "Participant"              .= powerStationParticipant,
+        "Station Name"             .= powerStationStationName,
+        "Region"                   .= powerStationRegion,
+        "Dispatch Type"            .= powerStationDispatchType,
+        "Category"                 .= powerStationCategory,
+        "Classification"           .= powerStationClassification,
+        "Fuel Source - Primary"    .= powerStationFuelSourcePrimary,
+        "Fuel Source - Descriptor" .= powerStationFuelSourceDescriptor,
+        "Tech Type - Primary"      .= powerStationTechTypePrimary,
+        "Tech Type - Descriptor"   .= powerStationTechTypeDescriptor,
+        "Physical Unit No."        .= powerStationPhysicalUnitNo,
+        "Unit Size (MW)"           .= powerStationUnitSizeMW,
+        "Aggregation"              .= bToT powerStationAggregation,
+        "DUID"                     .= powerStationDuid,
+        "Reg Cap (MW)"             .= powerStationRegCapMW,
+        "Max Cap (MW)"             .= powerStationMaxCapMW,
+        "Max ROC/Min"              .= powerStationMaxROCPerMin
+        ]
+
+instance FromNamedRecord PowerStation where
+    parseNamedRecord m =
+        PowerStation
+        <$> m .: "Participant"
+        <*> m .: "Station Name"
+        <*> m .: "Region"
+        <*> m .: "Dispatch Type"
+        <*> m .: "Category"
+        <*> m .: "Classification"
+        <*> m .: "Fuel Source - Primary"
+        <*> m .: "Fuel Source - Descriptor"
+        <*> m .: "Tech Type - Primary"
+        <*> m .: "Tech Type - Descriptor"
+        <*> m .: "Physical Unit No."
+        <*> m .: "Unit Size (MW)"
+        <*> (tToB <$> m .: "Aggregation")
+        <*> m .: "DUID"
+        <*> m .: "Reg Cap (MW)"
+        <*> m .: "Max Cap (MW)"
+        <*> m .: "Max ROC/Min"
+
+bToT :: Bool -> Text
+bToT b = if b then "Y" else "N"
+
+tToB :: Text -> Bool
+tToB t = case t of
+    "N" -> False
+    "Y" -> True
+    _ -> error $ "temp-server.hs tToB: could not parse string: " ++ show t
