@@ -8,6 +8,7 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module AEMO.Types where
 
@@ -45,6 +46,7 @@ data AppState = AS {_connPool :: Maybe ConnectionPool
                     ,_minLogLevel :: LogLevel}
 $(makeLenses ''AppState)
 
+-- type AppM a = StateT AppState IO a
 newtype AppM a = AppM {runAppM :: StateT AppState IO a}
     deriving (Functor, Applicative, Monad, MonadIO, MonadState AppState
              , MonadBase IO)
@@ -62,13 +64,15 @@ instance MonadLoggerIO AppM where
         minLog <- use minLogLevel
         return $ lg minLog
 
+
 -- The following is voo doo stolen from
 -- https://github.com/lfairy/haskol/blob/master/Web/KoL/Core.hs#L58
+-- Don't ask me how this works, just know that it compiles and probably works.
 instance MonadBaseControl IO AppM where
-    newtype StM AppM a = AStM { unAStM :: StM (StateT AppState IO) a}
+    type StM AppM a = StM (StateT AppState IO) a
 
-    liftBaseWith f = AppM . liftBaseWith $ \runInBase -> f $ fmap AStM . runInBase . runAppM
-    restoreM     = AppM . restoreM . unAStM
+    liftBaseWith f = AppM . liftBaseWith $ \runInBase -> f $ runInBase . runAppM
+    restoreM     = AppM . restoreM
     {-# INLINABLE liftBaseWith #-}
     {-# INLINABLE restoreM #-}
 

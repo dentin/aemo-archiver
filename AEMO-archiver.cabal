@@ -46,6 +46,43 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 
+library
+  Exposed-Modules: AEMO.Types,
+                   AEMO.Database,
+                   AEMO.CSV,
+                   AEMO.WebScraper
+
+  build-depends:        base                  >= 4.6      && < 4.8,
+                        bytestring            >= 0.10     && < 0.11,
+                        HTTP                  >= 4000.2   && < 4000.3,
+                        text                  >= 1.1      && < 2.0,
+                        tagsoup               >= 0.13.0   && < 0.14,
+                        cassava               >= 0.4.2    && < 0.5,
+                        vector                >= 0.10     && < 0.11,
+                        -- async                 >= 2.0.1    && < 2.0.2,
+                        network-uri           >= 2.6      && < 2.7,
+                        split                 >= 0.2      && < 0.3,
+                        zip-archive           >= 0.2.3    && < 0.2.4,
+                        deepseq               >= 1.3      && < 1.4,
+                        persistent            >= 2.1      && < 2.2,
+                        persistent-template   >= 2.1      && < 2.2,
+                        -- persistent-sqlite     >= 2.1      && < 2.2,
+                        time                  >= 1.4      && < 1.6,
+                        old-locale            >= 1.0.0.5  && < 1.0.1,
+                        -- filepath              >= 1.3      && < 1.4,
+                        -- directory             >= 1.2      && < 1.3,
+                        unordered-containers  >= 0.2      && < 0.3,
+                        monad-logger          >= 0.3.7    && < 0.4,
+                        resourcet             >= 1.1      && < 1.2,
+                        monad-control         >= 1.0      && < 2.0,
+                        transformers          >= 0.3      && < 0.5,
+                        -- time-units            >= 1.0      && < 1.1,
+                        persistent-postgresql >= 2.1      && < 2.2,
+                        lens                  >= 4.7      && < 5.0,
+                        mtl                   >= 2.1      && < 2.3,
+                        fast-logger           >= 2.3      && < 2.4,
+                        transformers-base     >= 0.4      && < 0.5
+
 executable AEMO-archiver
   -- .hs or .lhs file containing the Main module.
   main-is:             AEMO-archiver.hs
@@ -61,7 +98,7 @@ executable AEMO-archiver
   build-depends:        base                  >= 4.6      && < 4.8,
                         bytestring            >= 0.10     && < 0.11,
                         HTTP                  >= 4000.2   && < 4000.3,
-                        text                  >= 1.1      && < 1.2,
+                        text                  >= 1.1      && < 2.0,
                         tagsoup               >= 0.13.0   && < 0.14,
                         cassava               >= 0.4.2    && < 0.4.3,
                         vector                >= 0.10     && < 0.11,
@@ -80,8 +117,8 @@ executable AEMO-archiver
                         unordered-containers  >= 0.2      && < 0.3,
                         monad-logger          >= 0.3.7    && < 0.4,
                         resourcet             >= 1.1      && < 1.2,
-                        monad-control         >= 0.3      && < 1.1,
-                        transformers          >= 0.4      && < 0.5,
+                        monad-control         >= 1.0      && < 1.1,
+                        transformers          >= 0.3      && < 0.5,
                         time-units            >= 1.0      && < 1.1,
                         persistent-postgresql >= 2.1      && < 2.2,
                         lens                  >= 4.7      && < 5.0,
@@ -111,7 +148,7 @@ executable initDB
   build-depends:        base                  >= 4.6      && < 4.8,
                         bytestring            >= 0.10     && < 0.11,
                         HTTP                  >= 4000.2   && < 4000.3,
-                        text                  >= 1.1      && < 1.2,
+                        text                  >= 1.1      && < 2.0,
                         tagsoup               >= 0.13.0   && < 0.14,
                         cassava               >= 0.4.2    && < 0.4.3,
                         vector                >= 0.10.12  && < 0.10.13,
@@ -130,15 +167,15 @@ executable initDB
                         unordered-containers  >= 0.2      && < 0.3,
                         monad-logger          >= 0.3.7    && < 0.4,
                         resourcet             >= 1.1      && < 1.2,
-                        monad-control         >= 0.3      && < 0.4,
+                        monad-control         >= 1.0      && < 1.1,
                         transformers          >= 0.3      && < 0.5,
                         time-units            >= 1.0      && < 1.1,
                         persistent-postgresql >= 2.1      && < 2.2,
                         lens                  >= 4.8      && < 5.0,
-                        mtl                   >= 2.2      && < 2.3,
+                        mtl                   >= 2.1      && < 2.3,
                         fast-logger           >= 2.3      && < 2.4,
                         transformers-base     >= 0.4      && < 0.5,
-                        attoparsec            >= 0.10     && < 0.12
+                        attoparsec            >= 0.10     && < 1.0
 
   -- Directories containing source files.
   -- hs-source-dirs:
