@@ -23,7 +23,7 @@ main = do
     hSetBuffering stdout NoBuffering
 
     execAppM (AS Nothing makeLog LevelInfo) $ do
-        withPostgresqlPool dbConn 10 $ \conn -> do
+        withPostgresqlPool dbConn 1 $ \conn -> do
             connPool ?= conn
             -- Get the names of all known zip files in the database
             knownZipFiles <- allDbZips
