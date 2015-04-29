@@ -103,9 +103,10 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
         unitSizeMW              Text
         aggregation             Bool
         duid                    Text
-        regCapMW                Double Maybe
-        maxCapMW                Double Maybe
-        maxROCPerMin            Double Maybe
+        regCapMW                Text Maybe
+        maxCapMW                Text Maybe
+        maxROCPerMin            Text Maybe
+        deriving Show
 
     AemoCsvFile
         fileName Text
@@ -163,8 +164,8 @@ instance FromNamedRecord PowerStation where
         <*> m .: "Classification"
         <*> m .: "Fuel Source - Primary"
         <*> m .: "Fuel Source - Descriptor"
-        <*> m .: "Tech Type - Primary"
-        <*> m .: "Tech Type - Descriptor"
+        <*> m .: "Technology Type - Primary"
+        <*> m .: "Technology Type - Descriptor"
         <*> m .: "Physical Unit No."
         <*> m .: "Unit Size (MW)"
         <*> (tToB <$> m .: "Aggregation")
