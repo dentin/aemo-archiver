@@ -123,9 +123,11 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
         fileName Text
         recordsInserted Int
         UniqueAemoFile fileName
+        deriving Show
 
     AemoZipFile
         fileName Text
+        deriving Show
 
     PowerStationDatum
         duid Text
@@ -140,6 +142,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
         lon     Double
         comment Text
         UniqueDuidLocation duid
+        deriving Show
     |]
 
 
