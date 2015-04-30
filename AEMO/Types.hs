@@ -35,6 +35,8 @@ import qualified Data.ByteString                as B
 
 import           System.Log.FastLogger
 
+import Control.Exception (SomeException, try)
+
 import Data.Csv
 
 
@@ -80,6 +82,15 @@ instance MonadBaseControl IO AppM where
 execAppM :: AppState -> AppM a -> IO a
 -- execApp st (AppM m) = runNoLoggingT $ evalStateT m st
 execAppM st (AppM m) = evalStateT m st
+
+
+runApp :: ConnectionString -> Int -> LogLevel -> AppM a -> IO (Either SomeException a)
+runApp cstr nconn lev app = try $ do
+    execAppM (AS Nothing makeLog lev) $ do
+        withPostgresqlPool cstr nconn $ \conn -> do
+            connPool ?= conn
+            app
+
 
 makeLog :: LogLevel -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
 makeLog minLev loc src lev str = if lev >= minLev
