@@ -148,23 +148,23 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 
 instance ToNamedRecord PowerStation where
     toNamedRecord (PowerStation {..}) = namedRecord [
-        "Participant"              .= powerStationParticipant,
-        "Station Name"             .= powerStationStationName,
-        "Region"                   .= powerStationRegion,
-        "Dispatch Type"            .= powerStationDispatchType,
-        "Category"                 .= powerStationCategory,
-        "Classification"           .= powerStationClassification,
-        "Fuel Source - Primary"    .= powerStationFuelSourcePrimary,
-        "Fuel Source - Descriptor" .= powerStationFuelSourceDescriptor,
-        "Tech Type - Primary"      .= powerStationTechTypePrimary,
-        "Tech Type - Descriptor"   .= powerStationTechTypeDescriptor,
-        "Physical Unit No."        .= powerStationPhysicalUnitNo,
-        "Unit Size (MW)"           .= powerStationUnitSizeMW,
-        "Aggregation"              .= bToT powerStationAggregation,
-        "DUID"                     .= powerStationDuid,
-        "Reg Cap (MW)"             .= powerStationRegCapMW,
-        "Max Cap (MW)"             .= powerStationMaxCapMW,
-        "Max ROC/Min"              .= powerStationMaxROCPerMin
+        "Participant"                  .= powerStationParticipant,
+        "Station Name"                 .= powerStationStationName,
+        "Region"                       .= powerStationRegion,
+        "Dispatch Type"                .= powerStationDispatchType,
+        "Category"                     .= powerStationCategory,
+        "Classification"               .= powerStationClassification,
+        "Fuel Source - Primary"        .= powerStationFuelSourcePrimary,
+        "Fuel Source - Descriptor"     .= powerStationFuelSourceDescriptor,
+        "Technology Type - Primary"    .= powerStationTechTypePrimary,
+        "Technology Type - Descriptor" .= powerStationTechTypeDescriptor,
+        "Physical Unit No."            .= powerStationPhysicalUnitNo,
+        "Unit Size (MW)"               .= powerStationUnitSizeMW,
+        "Aggregation"                  .= bToT powerStationAggregation,
+        "DUID"                         .= powerStationDuid,
+        "Reg Cap (MW)"                 .= powerStationRegCapMW,
+        "Max Cap (MW)"                 .= powerStationMaxCapMW,
+        "Max ROC/Min"                  .= powerStationMaxROCPerMin
         ]
 
 instance FromNamedRecord PowerStation where
