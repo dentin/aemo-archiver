@@ -39,6 +39,9 @@ import Control.Exception (SomeException, try)
 
 import Data.Csv
 
+import Data.Time.Format (formatTime)
+import System.Locale (defaultTimeLocale)
+
 
 
 type FileName = String
@@ -165,6 +168,13 @@ instance ToNamedRecord PowerStation where
         "Reg Cap (MW)"                 .= powerStationRegCapMW,
         "Max Cap (MW)"                 .= powerStationMaxCapMW,
         "Max ROC/Min"                  .= powerStationMaxROCPerMin
+        ]
+
+instance ToNamedRecord PowerStationDatum where
+    toNamedRecord (PowerStationDatum {..}) = namedRecord
+        [ "DUID"        .= powerStationDatumDuid
+        , "Sample Time" .= formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S" powerStationDatumSampleTime
+        , "MW"          .= powerStationDatumMegaWatt
         ]
 
 instance FromNamedRecord PowerStation where
