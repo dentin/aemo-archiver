@@ -98,8 +98,10 @@ main = do
 
             -- Get the names of all known zip files in the database
             knownZipFiles <- allDbZips
-
             fetchArchiveActualLoad knownZipFiles
+
+            -- Run this twice because the previous call adds many new zip files
+            knownZipFiles <- allDbZips
             fetchDaily5mActualLoad knownZipFiles
 
 
