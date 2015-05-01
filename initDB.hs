@@ -49,10 +49,11 @@ stationLocs = "power_station_locations.csv"
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
+    connStr <- dbConn
 
     -- runNoLoggingT $ do
     execAppM (AS Nothing makeLog LevelDebug) $ do
-        withPostgresqlPool dbConn 1 $ \conn -> do
+        withPostgresqlPool connStr 1 $ \conn -> do
             connPool ?= conn
 
             migrateDb

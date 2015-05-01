@@ -94,6 +94,12 @@ runApp cstr nconn lev app = try $ do
             connPool ?= conn
             app
 
+runAppPool :: ConnectionPool -> Int -> LogLevel -> AppM a -> IO (Either SomeException a)
+runAppPool pool nconn lev app = try $ do
+    execAppM (AS Nothing makeLog lev) $ do
+        connPool ?= pool
+        app
+
 
 makeLog :: LogLevel -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
 makeLog minLev loc src lev str = if lev >= minLev

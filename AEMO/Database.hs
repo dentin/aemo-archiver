@@ -25,8 +25,14 @@ import           Control.Monad.Logger
 
 import           Database.Persist.Postgresql
 
-dbConn :: ConnectionString
-dbConn = "host=localhost dbname=aemoarchiver user=aemoarchiver password=weakpass port=5432"
+import qualified Data.ByteString      as B
+
+
+dbConn :: IO ConnectionString
+dbConn = do
+    conn <- B.readFile "aemo_database.conf"
+    return conn
+    -- "host=localhost dbname=aemoarchiver user=aemoarchiver password=weakpass port=5432"
 
 type CSVRow = ((), (), (), (), String, String, Double)
 type DBMonad a = SqlPersistT (NoLoggingT (ResourceT IO)) a

@@ -21,9 +21,10 @@ import Control.Monad.Logger (LogLevel(..))
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
+    connStr <- dbConn
 
     execAppM (AS Nothing makeLog LevelInfo) $ do
-        withPostgresqlPool dbConn 1 $ \conn -> do
+        withPostgresqlPool connStr 1 $ \conn -> do
             connPool ?= conn
             -- Get the names of all known zip files in the database
             knownZipFiles <- allDbZips
