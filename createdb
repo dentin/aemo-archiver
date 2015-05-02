@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+# Create the aemo database and user.
+#
+# Run the script like this:
+#
+# ./createdb <postgresql_host> <pg_master_db> <pg_master_user>
+#
+# You will be asked first for the Postgres master user password, and then for
+# the AEMO user password to be set and confirmed, and then asked to enter it
+# again to complete the required actions.
+#
+
+PG_HOST=${1}
+PG_MASTER_DB=${2}
+PG_MASTER_USER=${3}
+AEMO_USER='aemo'
+AEMO_DB='aemo'
+AEMO_SCHEMA='aemo'
+
+psql --echo-all -h ${PG_HOST} ${PG_MASTER_DB} ${PG_MASTER_USER} << EOF
+create user ${AEMO_USER};
+\password ${AEMO_USER}
+create database ${AEMO_DB};
+grant all privileges on database ${AEMO_DB} to ${AEMO_USER};
+\connect ${AEMO_DB}
+create extension postgis;
+create extension postgis_topology;
+\connect ${AEMO_DB} ${AEMO_USER}
+create schema "${AEMO_SCHEMA}";
+EOF
+
