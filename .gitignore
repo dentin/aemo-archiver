@@ -12,3 +12,4 @@ cabal.config
 *.zip
 *.sqlite
 *.class
+aemo_database.conf
