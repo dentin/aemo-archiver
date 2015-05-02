@@ -4,11 +4,13 @@ cabal sandbox init
 cabal install -j --only-dependencies
 cabal build
 
-ln .cabal/bin/AEMO-archiver
+ln -f dist/build/AEMO-archiver/AEMO-archiver
+ln -f dist/build/initDB/initDB
 
 mkdir target
 tar czf target/aemo-archiver-`date +%Y-%m-%d-%H%M%S`.tar.gz \
   AEMO-archiver \
+  initDB \
   createdb \
   registrations \
   power_station_metadata
