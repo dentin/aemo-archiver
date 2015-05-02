@@ -30,7 +30,7 @@ import qualified Data.ByteString      as B
 
 dbConn :: IO ConnectionString
 dbConn = do
-    conn <- B.readFile "aemo_database.conf"
+    conn <- B.readFile "/opt/aemo_database.conf"
     return conn
     -- "host=localhost dbname=aemoarchiver user=aemoarchiver password=weakpass port=5432"
 
