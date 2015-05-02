@@ -40,10 +40,10 @@ import qualified Data.Vector                 as V
 
 
 gensAndLoads :: FilePath
-gensAndLoads = "nem-Generators and Scheduled Loads.csv"
+gensAndLoads = "power_station_metadata/nem-Generators and Scheduled Loads.csv"
 
 stationLocs :: FilePath
-stationLocs = "power_station_locations.csv"
+stationLocs = "power_station_metadata/power_station_locations.csv"
 
 
 main :: IO ()
