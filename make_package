@@ -6,7 +6,7 @@ cabal install -j --only-dependencies
 cabal build
 
 mkdir target
-tar czf target/aemo-archiver-`date +%Y-%m-%d-%H%M%S`.tar.gz \
+tar czf target/aemo-archiver-`date +%Y-%m-%d-%H%M%S-%Z`.tar.gz \
   dist/build/AEMO-archiver/AEMO-archiver \
   dist/build/initDB/initDB \
   createdb \
