@@ -1,0 +1,14 @@
+#!/bin/bash
+
+cabal sandbox init
+cabal install -j --only-dependencies
+cabal build
+
+ln .cabal/bin/AEMO-archiver
+
+mkdir target
+tar czf target/aemo-archiver-`date +%Y-%m-%d-%H%M%S`.tar.gz \
+  AEMO-archiver \
+  createdb \
+  registrations \
+  power_station_metadata
