@@ -11,7 +11,7 @@ import           Data.Text                    (Text)
 import qualified Data.Text                    as T (pack)
 -- import           Control.Monad.Logger         (NoLoggingT)
 import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Resource (ResourceT)
+import           Control.Monad.Trans.Resource (ResourceT, runResourceT)
 import           Data.Time                    (ZonedTime, parseTime,
                                                zonedTimeToUTC)
 
@@ -35,7 +35,8 @@ dbConn = do
     -- "host=localhost dbname=aemoarchiver user=aemoarchiver password=weakpass port=5432"
 
 type CSVRow = ((), (), (), (), String, String, Double)
-type DBMonad a = SqlPersistT (NoLoggingT (ResourceT IO)) a
+-- type DBMonad a = SqlPersistT (NoLoggingT (ResourceT IO)) a
+type DBMonad a = SqlPersistT (LoggingT (ResourceT IO)) a
 
 
 migrateDb :: AppM ()
@@ -52,8 +53,11 @@ csvNotInDb f = do
 runDB :: DBMonad a-> AppM a
 runDB act = do
     mconn <- use connPool
+    lggr <- use logger
+    minLev <- use minLogLevel
     case mconn of
-        Just conn -> liftIO $ runSqlPersistMPool act conn
+        -- Just conn -> liftIO $ runSqlPersistMPool act conn
+        Just conn -> liftIO $ runResourceT $ flip runLoggingT (lggr minLev) $ runSqlPool act conn
         Nothing -> error "runDB: no database connection found!"
 
 
