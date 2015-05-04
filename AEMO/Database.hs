@@ -53,11 +53,10 @@ csvNotInDb f = do
 runDB :: DBMonad a-> AppM a
 runDB act = do
     mconn <- use connPool
-    lggr <- use logger
-    minLev <- use minLogLevel
+    lggr <- askLoggerIO
     case mconn of
         -- Just conn -> liftIO $ runSqlPersistMPool act conn
-        Just conn -> liftIO $ runResourceT $ flip runLoggingT (lggr minLev) $ runSqlPool act conn
+        Just conn -> liftIO $ runResourceT $ flip runLoggingT lggr $ runSqlPool act conn
         Nothing -> error "runDB: no database connection found!"
 
 

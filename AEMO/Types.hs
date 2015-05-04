@@ -94,11 +94,9 @@ runApp cstr nconn lev app = try $ do
             connPool ?= conn
             app
 
-runAppPool :: ConnectionPool -> Int -> LogLevel -> AppM a -> IO (Either SomeException a)
-runAppPool pool nconn lev app = try $ do
-    execAppM (AS Nothing makeLog lev) $ do
-        connPool ?= pool
-        app
+runAppPool :: ConnectionPool -> LogLevel -> AppM a -> IO (Either SomeException a)
+runAppPool pool lev app = try $ do
+    execAppM (AS (Just pool) makeLog lev) app
 
 
 makeLog :: LogLevel -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
