@@ -179,7 +179,7 @@ instance ToNamedRecord PowerStation where
 instance ToNamedRecord PowerStationDatum where
     toNamedRecord (PowerStationDatum {..}) = namedRecord
         [ "DUID"        .= powerStationDatumDuid
-        , "Most Recent Output Time (AEST)" .= formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S %Z"
+        , "Sample Time (AEST)" .= formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S %Z"
                                                 (utcToLocalTime aest powerStationDatumSampleTime)
         , "MW"          .= powerStationDatumMegaWatt
         ]
