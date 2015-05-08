@@ -5,10 +5,10 @@
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances       #-}
 
 module AEMO.Types where
 
@@ -29,25 +29,27 @@ import           Control.Monad.Trans.State.Lazy
 
 import           Database.Persist.Postgresql
 
-import           Control.Lens hiding ((.=))
+import           Control.Lens                   hiding ((.=))
 
 import qualified Data.ByteString                as B
 
 import           System.Log.FastLogger
 
-import Control.Exception (SomeException, try)
+import           Control.Exception              (SomeException, try)
 
-import Data.Csv
+import           Data.Csv
 
-import Data.Time.Format (formatTime)
-import System.Locale (defaultTimeLocale)
+import           Data.Time.Format               (formatTime)
+import           Data.Time.LocalTime
+import           System.Locale                  (defaultTimeLocale)
+
 
 
 
 type FileName = String
 
-data AppState = AS {_connPool :: Maybe ConnectionPool
-                    ,_logger   :: LogLevel -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
+data AppState = AS {_connPool     :: Maybe ConnectionPool
+                    ,_logger      :: LogLevel -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
                     ,_minLogLevel :: LogLevel}
 $(makeLenses ''AppState)
 
@@ -177,9 +179,17 @@ instance ToNamedRecord PowerStation where
 instance ToNamedRecord PowerStationDatum where
     toNamedRecord (PowerStationDatum {..}) = namedRecord
         [ "DUID"        .= powerStationDatumDuid
-        , "Sample Time UTC" .= formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S" powerStationDatumSampleTime
+        , "Most Recent Output Time (AEST)" .= formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S %Z"
+                                                (utcToLocalTime aest powerStationDatumSampleTime)
         , "MW"          .= powerStationDatumMegaWatt
         ]
+
+aest :: TimeZone
+aest = TimeZone
+            { timeZoneMinutes = 600
+            , timeZoneSummerOnly = False
+            , timeZoneName = "AEST"
+            }
 
 instance FromNamedRecord PowerStation where
     parseNamedRecord m =
