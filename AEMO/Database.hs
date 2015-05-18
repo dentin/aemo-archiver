@@ -28,12 +28,6 @@ import           Database.Persist.Postgresql
 import qualified Data.ByteString      as B
 
 
-dbConn :: IO ConnectionString
-dbConn = do
-    conn <- B.readFile "/opt/aemo_database.conf"
-    return conn
-    -- "host=localhost dbname=aemoarchiver user=aemoarchiver password=weakpass port=5432"
-
 type CSVRow = ((), (), (), (), String, String, Double)
 -- type DBMonad a = SqlPersistT (NoLoggingT (ResourceT IO)) a
 type DBMonad a = SqlPersistT (LoggingT (ResourceT IO)) a

@@ -39,6 +39,10 @@ import qualified Data.Attoparsec.Text        as A
 import qualified Data.Vector                 as V
 
 
+import           Data.Configurator.Types (Config)
+import qualified Data.Configurator as C
+
+
 gensAndLoads :: FilePath
 gensAndLoads = "power_station_metadata/nem-Generators and Scheduled Loads.csv"
 
@@ -49,11 +53,12 @@ stationLocs = "power_station_metadata/power_station_locations.csv"
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
-    connStr <- dbConn
+    (conf,_tid) <- C.autoReload C.autoConfig ["service.conf"]
+    connStr <- C.require conf "aemo.db-conn-string"
+    conns <- C.lookupDefault 10 conf "aemo.db-connections"
 
-    -- runNoLoggingT $ do
-    execAppM (AS Nothing makeLog LevelDebug) $ do
-        withPostgresqlPool connStr 1 $ \conn -> do
+    execAppM (AS Nothing makeLog LevelInfo) $ do
+        withPostgresqlPool connStr conns $ \conn -> do
             connPool ?= conn
 
             migrateDb

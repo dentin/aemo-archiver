@@ -17,14 +17,19 @@ import           Control.Lens
 
 import Control.Monad.Logger (LogLevel(..))
 
+import           Data.Configurator.Types (Config)
+import qualified Data.Configurator as C
+
 
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
-    connStr <- dbConn
+    (conf,_tid) <- C.autoReload C.autoConfig ["service.conf"]
+    connStr <- C.require conf "aemo.db-conn-string"
+    conns <- C.lookupDefault 10 conf "aemo.db-connections"
 
     execAppM (AS Nothing makeLog LevelInfo) $ do
-        withPostgresqlPool connStr 1 $ \conn -> do
+        withPostgresqlPool connStr conns $ \conn -> do
             connPool ?= conn
             -- Get the names of all known zip files in the database
             knownZipFiles <- allDbZips
