@@ -4,7 +4,7 @@ module AEMO.WebScraper where
 
 import           AEMO.Types           (FileName)
 import           Codec.Archive.Zip    (filesInArchive, findEntryByPath,
-                                       fromEntry, toArchive)
+                                       fromEntry, toArchiveOrFail)
 import           Control.DeepSeq      (NFData, deepseq)
 import           Control.Exception    (SomeException, catch)
 import           Data.ByteString.Lazy (ByteString)
@@ -86,15 +86,17 @@ fetch (fn, url) = do
 extractFiles :: String -> [(URL, ByteString)] -> [Either (URL, String) (FileName, ByteString)]
 extractFiles suf arcs = concatMap extract arcs where
     extract (url,bs) =
-        let arc = toArchive bs
-            paths = filesInArchive arc
-            files = filter (isSuffixOf suf . map toLower) paths
+        let arc = toArchiveOrFail bs
+            paths = fmap filesInArchive arc
+            files = fmap (filter (isSuffixOf suf . map toLower)) paths
         in case files of
-            []  -> [Left (url, "No " ++ suf ++ " found in " ++ url)]
-            fs  -> map ext fs where
-                    ext f = case findEntryByPath f arc of
-                        Nothing -> Left  (url, concat ["Could not find ", f, " in archive ", url])
-                        Just e  -> Right (f, fromEntry e)
+            Left err -> [Left (url, "Error parsing zip file: " ++ err)]
+            Right f -> case f of
+                []  -> [Left (url, "No " ++ suf ++ " found in " ++ url)]
+                fs  -> map ext fs where
+                        ext f = case findEntryByPath f arc of
+                            Nothing -> Left  (url, concat ["Could not find ", f, " in archive ", url])
+                            Just e  -> Right (f, fromEntry e)
 
 
 simpleHTTPSafe :: (HStream ty, NFData ty) => Request ty -> IO (Result (Response ty))
