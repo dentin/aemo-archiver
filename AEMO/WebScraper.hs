@@ -94,7 +94,7 @@ extractFiles suf arcs = concatMap extract arcs where
             Right f -> case f of
                 []  -> [Left (url, "No " ++ suf ++ " found in " ++ url)]
                 fs  -> map ext fs where
-                        ext f = case findEntryByPath f arc of
+                        ext f = case findEntryByPath f ((\(Right x) -> x) arc) of
                             Nothing -> Left  (url, concat ["Could not find ", f, " in archive ", url])
                             Just e  -> Right (f, fromEntry e)
 
