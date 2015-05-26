@@ -8,7 +8,6 @@ if [[ ! ${CLEAN} == 0 ]]; then
 fi
 
 DESCRIBE=$(git describe)
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 cabal sandbox init
 cabal clean
@@ -16,7 +15,7 @@ cabal install -j --only-dependencies
 cabal build
 
 mkdir -p target
-tar czf target/aemo-archiver-${BRANCH}-${DESCRIBE}.tar.gz \
+tar czf target/aemo-archiver-${DESCRIBE}.tar.gz \
   dist/build/AEMO-archiver/AEMO-archiver \
   dist/build/initDB/initDB \
   createdb \
