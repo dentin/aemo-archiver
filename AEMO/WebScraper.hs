@@ -1,8 +1,9 @@
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE RankNTypes #-}
 
 module AEMO.WebScraper where
 
-import           AEMO.Types           (FileName)
+import           AEMO.Types           (FileName,ZipName)
 import           Codec.Archive.Zip    (filesInArchive, findEntryByPath,
                                        fromEntry, toArchiveOrFail)
 import           Control.DeepSeq      (NFData, deepseq)
@@ -24,6 +25,16 @@ import           Network.URI          (escapeURIString, parseURI,
                                        parseURIReference, relativeTo)
 import           Text.HTML.TagSoup    (Tag (TagOpen), parseTags)
 
+import           Data.Conduit (Conduit, Producer)
+import qualified Data.Conduit as C
+
+import           Data.Conduit.List (sourceList)
+import qualified Data.Conduit.List as CL
+
+import Data.Char (toUpper)
+
+import Control.Monad.IO.Class
+
 type URL = String
 
 
@@ -35,23 +46,22 @@ aemoPSArchiveURL =  "http://www.nemweb.com.au/REPORTS/ARCHIVE/Dispatch_SCADA/"
 
 
 -- | Given a URL, finds all HTML links on the page
-getARefs :: URL -> IO [String]
+getARefs :: (MonadIO m) => URL -> Producer m String
 getARefs url = do
-    ersp <- simpleHTTPSafe (getRequest url)
+    ersp <- liftIO $ simpleHTTPSafe (getRequest url)
     case ersp of
-        Left err -> print err >> return []
+        Left err -> error (show err) -- TODO: Do this properly
         Right rsp -> do
             let tags = parseTags (rspBody rsp)
-            return [val | (TagOpen n attrs) <- tags, n `elem` ["a","A"],
-                          (key,val) <- attrs, key `elem` ["href","HREF"]
-                          ]
+            sourceList [val | (TagOpen n attrs) <- tags , map toUpper n == "A",
+                              (key,val)         <- attrs, map toUpper key == "HREF"
+                            ]
 
 
 -- | Takes a URL and finds all zip files linked from it.
-joinLinks :: URL -> IO [(FileName, URL)]
-joinLinks url = do
-    links <- getARefs url
-    return . mapMaybe (joinURIs url) . filter (isSuffixOf ".zip" . map toLower) $ links
+-- joinLinks :: URL -> IO [(FileName, URL)]
+joinLinks :: (MonadIO m) => URL -> Conduit String m (FileName,URL)
+joinLinks url = CL.filter (isSuffixOf ".zip" . map toLower) C.=$= CL.mapMaybe (joinURIs url)
 
 
 -- | Takes a base URL and a path relative to that URL and joins them:
@@ -67,8 +77,13 @@ joinURIs base relative = do
 
 -- | Given a list of URLs, attempts to fetch them all and pairs the result with
 --   the url of the request.
-fetchFiles :: [(FileName, URL)] -> IO [(FileName, Either String ByteString)]
-fetchFiles urls = mapM fetch urls
+-- fetchFiles :: [(FileName, URL)] -> IO [(FileName, Either String ByteString)]
+fetchFiles :: (MonadIO m) => Conduit (FileName, URL) m (FileName, ByteString)
+fetchFiles = C.awaitForever $ \tup -> do
+    etup <- liftIO $ fetch tup
+    case etup of
+        (fn,Left err) -> liftIO $ print err
+        (fn,Right bs) -> C.yield (fn,bs)
 
 
 -- | Fetch an individual file.
@@ -76,27 +91,45 @@ fetch :: (FileName, URL) -> IO (FileName, Either String ByteString)
 fetch (fn, url) = do
     res <- simpleHTTPSafe ((getRequest url) {rqBody = BSL.empty})
             `catch` (\e -> return $ Left (ErrorMisc (show (e :: SomeException))))
-    putChar '.'
+    putChar '*'
     return $! (fn,) $! case res of
         Right bs -> Right . rspBody $! bs
         Left err -> Left . show $! err
 
 
 -- | Takes URLs and zip files and extracts all files with a particular suffix from each zip file
-extractFiles :: String -> [(URL, ByteString)] -> [Either (URL, String) (FileName, ByteString)]
-extractFiles suf arcs = concatMap extract arcs where
-    extract (url,bs) =
-        let arc = toArchiveOrFail bs
-            paths = fmap filesInArchive arc
-            files = fmap (filter (isSuffixOf suf . map toLower)) paths
-        in case files of
-            Left err -> [Left (url, "Error parsing zip file: " ++ err)]
-            Right f -> case f of
-                []  -> [Left (url, "No " ++ suf ++ " found in " ++ url)]
-                fs  -> map ext fs where
-                        ext f = case findEntryByPath f ((\(Right x) -> x) arc) of
-                            Nothing -> Left  (url, concat ["Could not find ", f, " in archive ", url])
-                            Just e  -> Right (f, fromEntry e)
+-- extractFiles :: String -> [(URL, ByteString)] -> [Either (URL, String) (FileName, ByteString)]
+extractFiles :: (MonadIO m) => String -> Conduit (URL, ByteString) m ((ZipName,FileName), ByteString)
+extractFiles suf = C.awaitForever $ \(url,bs) -> do
+    let arc = toArchiveOrFail bs
+        paths = fmap filesInArchive arc
+        files = fmap (filter (isSuffixOf suf . map toLower)) paths
+    case files of
+        Left err -> liftIO $ print (url, "Error parsing zip file: " ++ err)
+        Right f -> case f of
+            []  -> liftIO $ print (url, "No " ++ suf ++ " found in " ++ url)
+            fs  -> mapM_ ext fs where
+                    ext f = case findEntryByPath f ((\(Right x) -> x) arc) of -- Partial safe here because code not reached
+                                                                              -- if arc is Left
+                        Nothing -> liftIO $ print (url, concat ["Could not find ", f, " in archive ", url])
+                        Just e  -> C.yield ((filename url,f), fromEntry e)
+
+
+
+
+  -- concatMap extract arcs where
+  --   extract (url,bs) =
+  --       let arc = toArchiveOrFail bs
+  --           paths = fmap filesInArchive arc
+  --           files = fmap (filter (isSuffixOf suf . map toLower)) paths
+  --       in case files of
+  --           Left err -> liftIO $ print (url, "Error parsing zip file: " ++ err)
+  --           Right f -> case f of
+  --               []  -> liftIO $ print (url, "No " ++ suf ++ " found in " ++ url)
+  --               fs  -> map ext fs where
+  --                       ext f = case findEntryByPath f ((\(Right x) -> x) arc) of
+  --                           Nothing -> liftIO $ print (url, concat ["Could not find ", f, " in archive ", url])
+  --                           Just e  -> yield (f, fromEntry e)
 
 
 simpleHTTPSafe :: (HStream ty, NFData ty) => Request ty -> IO (Result (Response ty))

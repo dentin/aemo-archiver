@@ -34,5 +34,6 @@ main = do
             -- Get the names of all known zip files in the database
             knownZipFiles <- allDbZips
 
-            fetchDaily5mActualLoad knownZipFiles
+            -- fetchDaily5mActualLoad knownZipFiles
+            processDailys knownZipFiles
 

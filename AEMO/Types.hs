@@ -48,6 +48,9 @@ import           System.Locale                  (defaultTimeLocale)
 
 type FileName = String
 
+type CSVName = FileName
+type ZipName = FileName
+
 data AppState = AS {_connPool     :: Maybe ConnectionPool
                     ,_logger      :: LogLevel -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
                     ,_minLogLevel :: LogLevel}

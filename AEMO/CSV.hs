@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 
 module AEMO.CSV where
 
@@ -28,90 +29,159 @@ import           AEMO.Database
 import           AEMO.Types
 import           AEMO.WebScraper
 
-fetchDaily5mActualLoad :: [Text] -> AppM ()
-fetchDaily5mActualLoad knownZipFiles = do
-    $(logInfo) "Finding new 5 minute zips..."
-    zipLinks <- liftIO $ joinLinks aemo5mPSURL
-    retrieve knownZipFiles zipLinks
+import           Data.Conduit (Sink, (=$=))
+import qualified Data.Conduit as C
+import           Data.Conduit.List ()
+import qualified Data.Conduit.List as CL
+import Control.Monad.Trans
 
 
-fetchArchiveActualLoad :: [Text] -> AppM ()
-fetchArchiveActualLoad knownZipFiles = do
-    $(logInfo) "Finding new archive zips..."
-    zipLinks <- liftIO $ joinLinks aemoPSArchiveURL
-    retrieve knownZipFiles zipLinks
+
+-- fetchDaily5mActualLoad :: [Text] -> AppM ()
+-- fetchDaily5mActualLoad knownZipFiles = do
+--     $(logInfo) "Finding new 5 minute zips..."
+--     zipLinks <- liftIO $ joinLinks aemo5mPSURL
+--     retrieve knownZipFiles zipLinks
 
 
-retrieve :: [Text] -> [(FileName, URL)] -> AppM ()
-retrieve knownZipFiles zipLinks = do
-    -- Filter URLs for only those that haven't been inserted
-    let seenfiles = S.fromList knownZipFiles
-        unseen = filter (\(fn,_) -> not $ S.member (T.pack fn) seenfiles) zipLinks
-
-    -- We're done if there aren't any files we haven't loaded yet
-    unless (null unseen) $ do
-        -- Fetch the contents of the zip files
-
-        $(logInfo) $ T.pack ("Fetching " ++ show (length unseen) ++ " new files:")
-        fetched <- liftIO $ fetchFiles unseen
-        $(logInfo) "Done fetching new files"
-        let (ferrs, rslts) = partition' fetched
-        unless (rslts `seq` null ferrs) $ do
-            $(logWarn) "Fetch failures:"
-            mapM_ ($(logInfo) . T.pack . show) ferrs
-        $(logInfo) $ T.pack ("Files fetched: " ++ show (length rslts))
-
-        $(logInfo) "Processing data:"
-        mapM_ (process 10) rslts
-        $(logInfo) "Done processing data"
+-- fetchArchiveActualLoad :: [Text] -> AppM ()
+-- fetchArchiveActualLoad knownZipFiles = do
+--     $(logInfo) "Finding new archive zips..."
+--     zipLinks <- liftIO $ joinLinks aemoPSArchiveURL
+--     retrieve knownZipFiles zipLinks
 
 
-process :: Int -> (FileName, ByteString) -> AppM ()
-process c (fn, bs) =
-    if c <= 0
-        then do
-            $(logWarn) $ T.pack ("Recursion limit reached for URL " ++ fn)
-            return ()
-        else do
-            -- Extract zips from the archive zip files
-            let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ [(fn, bs)]
-            if zextracted `seq` null zeerrs
-                then do
-                    -- Recurse with any new zip files
-                    mapM_ (process (c-1)) zextracted
-                    runDB $ insert $ AemoZipFile (T.pack fn)
-                    $(logInfo) $ T.pack ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from file " ++ fn)
-                else processCSVs (fn, bs)
+processDailys :: [Text] -> AppM ()
+processDailys knownZips = do
+    let seenfiles = S.fromList knownZips
+    getARefs aemo5mPSURL C.$$
+        joinLinks aemo5mPSURL  -- (FileName,URL)
+        C.=$= CL.filter (\(fn,_) -> not $ S.member (T.pack fn) seenfiles) -- (FileName,URL)
+        C.=$= fetchFiles -- (FileName,ByteString)
+        C.=$= extractFiles ".csv" -- ((ZipName,FileName), ByteString) -- CSV
+        C.=$= processZips
+
+processArchives :: [Text] -> AppM ()
+processArchives knownZips = do
+    let seenfiles = S.fromList knownZips
+    getARefs aemoPSArchiveURL C.$$
+        joinLinks aemoPSArchiveURL  -- (FileName,URL)
+        C.=$= CL.filter (\(fn,_) -> not $ S.member (T.pack fn) seenfiles) -- (FileName,URL)
+        C.=$= fetchFiles -- (FileName,ByteString)
+        C.=$= extractFiles ".zip" -- ((ZipName,FileName), ByteString) -- ZIP
+        C.=$= CL.map (\((zn,fn),bs) -> (zn,bs)) -- (ZipName,ByteString) -- ZIP
+        C.=$= extractFiles ".csv" -- ((ZipName,FileName), ByteString) -- CSV
+        C.=$= processZips
+
+-- retrieve :: [Text] -> [(FileName, URL)] -> AppM ()
+-- retrieve knownZipFiles zipLinks = do
+--     -- Filter URLs for only those that haven't been inserted
+--     let seenfiles = S.fromList knownZipFiles
+--         unseen = filter (\(fn,_) -> not $ S.member (T.pack fn) seenfiles) zipLinks
+
+--     -- We're done if there aren't any files we haven't loaded yet
+--     unless (null unseen) $ do
+--         -- Fetch the contents of the zip files
+
+--         $(logInfo) $ T.pack ("Fetching " ++ show (length unseen) ++ " new files:")
+--         fetched <- liftIO $ fetchFiles unseen
+--         $(logInfo) "Done fetching new files"
+--         let (ferrs, rslts) = partition' fetched
+--         -- unless (rslts `seq` null ferrs) $ do
+--         --     $(logWarn) "Fetch failures:"
+--         --     mapM_ ($(logInfo) . T.pack . show) ferrs
+--         $(logInfo) $ T.pack ("Files fetched: " ++ show (length rslts))
+
+--         $(logInfo) "Processing data:"
+--         -- mapM_ (process 10) rslts
+        -- $(logInfo) "Done processing data"
 
 
-processCSVs :: (FileName, ByteString) -> AppM ()
-processCSVs (fn, bs) = do
-    -- Extract CSVs from the zip files
-    let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ [(fn, bs)]
-    unless (extracted `seq` null eerrs) $ do
-        $(logWarn) "Extraction failures:"
-        mapM_ (\x -> $(logWarn) $ T.pack . show $ x) eerrs
+-- process :: Int -> (FileName, ByteString) -> AppM ()
+-- process c (fn, bs) =
+--     if c <= 0
+--         then do
+--             $(logWarn) $ T.pack ("Recursion limit reached for URL " ++ fn)
+--             return ()
+--         else do
+--             -- Extract zips from the archive zip files
+--             let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ [(fn, bs)]
+--             if zextracted `seq` null zeerrs
+--                 then do
+--                     -- Recurse with any new zip files
+--                     mapM_ (process (c-1)) zextracted
+--                     runDB $ insert $ AemoZipFile (T.pack fn)
+--                     $(logInfo) $ T.pack ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from file " ++ fn)
+--                 else processCSVs (fn, bs)
 
-    -- Check if CSV is already in db, to avoid new archive zips containing old current CVS files
-    newCsvFiles <- filterM (\(f, _) -> csvNotInDb f) extracted
-
-    -- Parse the CSV files into database types
-    let (perrs, parsed) = partition' . map (second parseAEMO) $ newCsvFiles
-    unless (parsed `seq` null perrs) $ do
-        $(logWarn) "Parsing failures:"
-        mapM_ (\x -> $(logWarn) $ T.pack . show $ x) perrs
-
-    runDB $ do
-        -- Insert data into database
-        mapM_ insertCSV parsed
-        -- Insert zip file filename into database
-        insert $ AemoZipFile (T.pack fn)
-        liftIO $ putChar '.'
-
-    return ()
+processZips :: Sink ((ZipName,CSVName), ByteString) AppM ()
+processZips = C.awaitForever $ \((zp,fn),csv) -> do
+        notInDB <- lift $ csvNotInDb fn
+        if notInDB then do
+            case parseAEMO csv of
+                Left err -> liftIO $ print err
+                Right parsed -> lift $ runDB $ do -- Vector CSVRow
+                    insertCSV (fn, parsed)
+                    insert $ AemoZipFile (T.pack zp)
+                    return ()
+            else return ()
 
 
-insertCSV :: (String, Vector CSVRow) -> DBMonad ()
+
+
+
+
+
+-- processCSVs :: Sink (FileName, ByteString) AppM ()
+-- processCSVs =
+--                                                             -- (FileName,Vec CSVRow)
+--                                                             -- -> (FileName, )
+--     extractFiles ".csv" =$= filterM' (csvNotInDb . snd . fst) =$= C.awaitForever (\(csvname,csv) -> do
+--         let eparsed = parseAEMO csv
+--         case eparsed of
+--             Left err -> liftIO $ print err
+--             Right parsed -> lift $ ins (fn, parsed)
+--         ) -- CL.map (second parseAEMO) =$= CL.mapM_ (lift . ins)
+
+--     where
+--         filterM' :: Monad m => (a -> m Bool) -> C.Conduit a m a
+--         filterM' p = C.awaitForever $ \x -> do
+--             keep <- lift (p x)
+--             if keep then C.yield x else return ()
+
+--         ins (fn,parsed) = runDB $ do
+--             -- Insert data into database
+--             mapM_ insertCSV parsed
+--             -- Insert zip file filename into database
+--             insert $ AemoZipFile (T.pack fn)
+--             liftIO $ putChar '.'
+
+    -- -- Extract CSVs from the zip files
+    -- let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ [(fn, bs)]
+    -- unless (extracted `seq` null eerrs) $ do
+    --     $(logWarn) "Extraction failures:"
+    --     mapM_ (\x -> $(logWarn) $ T.pack . show $ x) eerrs
+
+    -- -- Check if CSV is already in db, to avoid new archive zips containing old current CVS files
+    -- newCsvFiles <- filterM (\(f, _) -> csvNotInDb f) extracted
+
+    -- -- Parse the CSV files into database types
+    -- let (perrs, parsed) = partition' . map (second parseAEMO) $ newCsvFiles
+    -- unless (parsed `seq` null perrs) $ do
+    --     $(logWarn) "Parsing failures:"
+    --     mapM_ (\x -> $(logWarn) $ T.pack . show $ x) perrs
+
+    -- runDB $ do
+    --     -- Insert data into database
+    --     mapM_ insertCSV parsed
+    --     -- Insert zip file filename into database
+    --     insert $ AemoZipFile (T.pack fn)
+    --     liftIO $ putChar '.'
+
+    -- return ()
+
+
+insertCSV :: (FileName, Vector CSVRow) -> DBMonad ()
 insertCSV (file, vec) = do
     fid <- insert $ AemoCsvFile (T.pack file) (V.length vec)
     let (errs,psdata) = partitionEithers . map (csvTupleToPowerStationDatum fid) . V.toList $ vec
