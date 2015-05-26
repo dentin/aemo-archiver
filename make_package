@@ -1,12 +1,22 @@
 #!/bin/bash
 
+git diff-index --quiet HEAD
+CODE=$?
+if [[ ! $CODE == 0 ]]; then
+    echo "There are uncommitted modifications - not making a package!"
+    exit 1
+fi
+
+DESCRIBE=$(git describe)
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
 cabal sandbox init
 cabal clean
 cabal install -j --only-dependencies
 cabal build
 
 mkdir target
-tar czf target/aemo-archiver-`date +%Y-%m-%d-%H%M%S-%Z`.tar.gz \
+tar czf target/aemo-archiver-${BRANCH}-${DESCRIBE}.tar.gz \
   dist/build/AEMO-archiver/AEMO-archiver \
   dist/build/initDB/initDB \
   createdb \
