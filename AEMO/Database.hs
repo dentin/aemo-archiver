@@ -25,7 +25,6 @@ import           Control.Monad.Logger
 
 import           Database.Persist.Postgresql
 
-import qualified Data.ByteString      as B
 
 
 type CSVRow = ((), (), (), (), String, String, Double)

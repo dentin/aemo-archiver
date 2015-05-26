@@ -1,9 +1,17 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
-module AEMO.WebScraper where
+module AEMO.WebScraper
+    ( aemo5mPSURL
+    , aemoPSArchiveURL
+    , getARefs
+    , joinLinks
+    , fetchFiles
+    , extractFiles
+    ) where
 
-import           AEMO.Types           (FileName,ZipName)
+import           AEMO.Types           (FileName,ZipName(..))
 import           Codec.Archive.Zip    (filesInArchive, findEntryByPath,
                                        fromEntry, toArchiveOrFail)
 import           Control.DeepSeq      (NFData, deepseq)
@@ -13,7 +21,7 @@ import qualified Data.ByteString.Lazy as BSL (empty)
 import           Data.Char            (toLower)
 import           Data.List            (isSuffixOf)
 import           Data.List.Split      (splitOn)
-import           Data.Maybe           (fromMaybe, mapMaybe)
+import           Data.Maybe           (fromMaybe)
 import           Network.HTTP         (HStream, Request, Response,
                                        defaultNormalizeRequestOptions,
                                        failHTTPS, getAuth, getRequest, host,
@@ -31,9 +39,15 @@ import qualified Data.Conduit as C
 import           Data.Conduit.List (sourceList)
 import qualified Data.Conduit.List as CL
 
+import Data.Functor
+
 import Data.Char (toUpper)
 
 import Control.Monad.IO.Class
+
+import Control.Monad.Logger
+import qualified Data.Text as T
+
 
 type URL = String
 
@@ -78,11 +92,13 @@ joinURIs base relative = do
 -- | Given a list of URLs, attempts to fetch them all and pairs the result with
 --   the url of the request.
 -- fetchFiles :: [(FileName, URL)] -> IO [(FileName, Either String ByteString)]
-fetchFiles :: (MonadIO m) => Conduit (FileName, URL) m (FileName, ByteString)
-fetchFiles = C.awaitForever $ \tup -> do
-    etup <- liftIO $ fetch tup
+fetchFiles :: (MonadIO m, MonadLogger m) => Conduit (ZipName, URL) m (FileName, ByteString)
+fetchFiles = C.awaitForever $ \(ZipName z,url) -> do
+
+    $(logInfo) $ T.pack ("fetchFiles: Fetching: " ++ url)
+    etup <- liftIO $ fetch (z,url)
     case etup of
-        (fn,Left err) -> liftIO $ print err
+        (fn,Left err) -> $(logWarn) $ T.pack (concat ["fetchFiles: Failed to fetch ", fn, " from ", url,": ", err])
         (fn,Right bs) -> C.yield (fn,bs)
 
 
@@ -91,7 +107,6 @@ fetch :: (FileName, URL) -> IO (FileName, Either String ByteString)
 fetch (fn, url) = do
     res <- simpleHTTPSafe ((getRequest url) {rqBody = BSL.empty})
             `catch` (\e -> return $ Left (ErrorMisc (show (e :: SomeException))))
-    putChar '*'
     return $! (fn,) $! case res of
         Right bs -> Right . rspBody $! bs
         Left err -> Left . show $! err
@@ -99,37 +114,20 @@ fetch (fn, url) = do
 
 -- | Takes URLs and zip files and extracts all files with a particular suffix from each zip file
 -- extractFiles :: String -> [(URL, ByteString)] -> [Either (URL, String) (FileName, ByteString)]
-extractFiles :: (MonadIO m) => String -> Conduit (URL, ByteString) m ((ZipName,FileName), ByteString)
+extractFiles :: (MonadIO m, MonadLogger m) => String -> Conduit (URL, ByteString) m ((ZipName,FileName), ByteString)
 extractFiles suf = C.awaitForever $ \(url,bs) -> do
     let arc = toArchiveOrFail bs
         paths = fmap filesInArchive arc
         files = fmap (filter (isSuffixOf suf . map toLower)) paths
     case files of
-        Left err -> liftIO $ print (url, "Error parsing zip file: " ++ err)
+        Left err -> $(logWarn) $ T.pack ("Error parsing zip file from " ++ url ++ ": " ++ err)
         Right f -> case f of
-            []  -> liftIO $ print (url, "No " ++ suf ++ " found in " ++ url)
+            []  -> $(logWarn) $ T.pack ("No " ++ suf ++ " found in " ++ url)
             fs  -> mapM_ ext fs where
-                    ext f = case findEntryByPath f ((\(Right x) -> x) arc) of -- Partial safe here because code not reached
+                    ext fname = case findEntryByPath fname ((\(Right x) -> x) arc) of -- Partial safe here because code not reached
                                                                               -- if arc is Left
-                        Nothing -> liftIO $ print (url, concat ["Could not find ", f, " in archive ", url])
-                        Just e  -> C.yield ((filename url,f), fromEntry e)
-
-
-
-
-  -- concatMap extract arcs where
-  --   extract (url,bs) =
-  --       let arc = toArchiveOrFail bs
-  --           paths = fmap filesInArchive arc
-  --           files = fmap (filter (isSuffixOf suf . map toLower)) paths
-  --       in case files of
-  --           Left err -> liftIO $ print (url, "Error parsing zip file: " ++ err)
-  --           Right f -> case f of
-  --               []  -> liftIO $ print (url, "No " ++ suf ++ " found in " ++ url)
-  --               fs  -> map ext fs where
-  --                       ext f = case findEntryByPath f ((\(Right x) -> x) arc) of
-  --                           Nothing -> liftIO $ print (url, concat ["Could not find ", f, " in archive ", url])
-  --                           Just e  -> yield (f, fromEntry e)
+                        Nothing -> $(logWarn) $ T.pack (concat ["Could not find ", fname, " in archive ", url])
+                        Just e  -> C.yield ((ZipName $ filename url,fname), fromEntry e)
 
 
 simpleHTTPSafe :: (HStream ty, NFData ty) => Request ty -> IO (Result (Response ty))

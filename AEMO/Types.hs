@@ -31,7 +31,7 @@ import           Database.Persist.Postgresql
 
 import           Control.Lens                   hiding ((.=))
 
-import qualified Data.ByteString                as B
+import qualified Data.ByteString.Char8          as C8
 
 import           System.Log.FastLogger
 
@@ -48,8 +48,8 @@ import           System.Locale                  (defaultTimeLocale)
 
 type FileName = String
 
-type CSVName = FileName
-type ZipName = FileName
+newtype CSVName = CSVName FileName
+newtype ZipName = ZipName FileName
 
 data AppState = AS {_connPool     :: Maybe ConnectionPool
                     ,_logger      :: LogLevel -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
@@ -106,7 +106,7 @@ runAppPool pool lev app = try $ do
 
 makeLog :: LogLevel -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
 makeLog minLev loc src lev str = if lev >= minLev
-    then B.putStrLn . fromLogStr $ defaultLogStr loc src lev str
+    then C8.putStr . fromLogStr $ defaultLogStr loc src lev str
     else return ()
 
 

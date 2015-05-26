@@ -2,24 +2,25 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 
-module AEMO.CSV where
+module AEMO.CSV
+    ( processDailys
+    , processArchives
+    ) where
 
 import           Data.ByteString.Lazy        (ByteString)
 -- import qualified Data.ByteString.Lazy        as B
 import           Data.Vector                 (Vector)
 import qualified Data.Vector                 as V
 -- TODO: why Char8?
-import           Control.Arrow               (second)
-import           Control.Monad               (filterM, unless)
+import           Control.Monad               (when)
+import Data.Functor
 import qualified Data.ByteString.Lazy.Char8  as C (intercalate, lines)
 import           Data.Csv                    (HasHeader (..), decode)
 import           Data.Either                 (partitionEithers)
 import qualified Data.HashSet                as S (fromList, member)
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T (pack)
--- import           Data.List.Split              (chunksOf)
-
-import           Control.Monad.IO.Class      (liftIO)
+import Data.Maybe (isJust)
 
 import           Database.Persist.Postgresql
 
@@ -29,156 +30,75 @@ import           AEMO.Database
 import           AEMO.Types
 import           AEMO.WebScraper
 
-import           Data.Conduit (Sink, (=$=))
+import           Data.Conduit (Sink, Conduit, (=$=), ($$))
 import qualified Data.Conduit as C
 import           Data.Conduit.List ()
 import qualified Data.Conduit.List as CL
 import Control.Monad.Trans
 
+import Control.Arrow (first)
 
 
--- fetchDaily5mActualLoad :: [Text] -> AppM ()
--- fetchDaily5mActualLoad knownZipFiles = do
---     $(logInfo) "Finding new 5 minute zips..."
---     zipLinks <- liftIO $ joinLinks aemo5mPSURL
---     retrieve knownZipFiles zipLinks
-
-
--- fetchArchiveActualLoad :: [Text] -> AppM ()
--- fetchArchiveActualLoad knownZipFiles = do
---     $(logInfo) "Finding new archive zips..."
---     zipLinks <- liftIO $ joinLinks aemoPSArchiveURL
---     retrieve knownZipFiles zipLinks
+Notes to self:
+    - Currently in the process of tagging things with newtypes to show what sorts of String
+      we're working with
+    - Some how need to keep track of all zip and csv file names while maintaining the same API
+      for both invocations of extractFiles - perhaps provide an accessor fiunction to get the
+      relevant parts of the tuple being passed in
+    - The "pipeline" is probably only relevant for each zip file download - do all other processing
+      in standard monadic code
 
 
 processDailys :: [Text] -> AppM ()
 processDailys knownZips = do
     let seenfiles = S.fromList knownZips
-    getARefs aemo5mPSURL C.$$
+    -- liftIO $ print seenfiles
+    getARefs aemo5mPSURL $$
         joinLinks aemo5mPSURL  -- (FileName,URL)
-        C.=$= CL.filter (\(fn,_) -> not $ S.member (T.pack fn) seenfiles) -- (FileName,URL)
-        C.=$= fetchFiles -- (FileName,ByteString)
-        C.=$= extractFiles ".csv" -- ((ZipName,FileName), ByteString) -- CSV
-        C.=$= processZips
+        =$= CL.map (first ZipName) -- (ZipName,URL)
+        =$= filterM' (\(fn,_) -> not <$> (liftIO (print fn) >> knownZIP fn)) -- (FileName,URL)
+        =$= fetchFiles -- (FileName,ByteString)
+        =$= extractFiles ".csv" -- ((ZipName,FileName), ByteString) -- CSV
+        =$= processZips
 
 processArchives :: [Text] -> AppM ()
 processArchives knownZips = do
     let seenfiles = S.fromList knownZips
-    getARefs aemoPSArchiveURL C.$$
+    getARefs aemoPSArchiveURL $$
         joinLinks aemoPSArchiveURL  -- (FileName,URL)
-        C.=$= CL.filter (\(fn,_) -> not $ S.member (T.pack fn) seenfiles) -- (FileName,URL)
-        C.=$= fetchFiles -- (FileName,ByteString)
-        C.=$= extractFiles ".zip" -- ((ZipName,FileName), ByteString) -- ZIP
-        C.=$= CL.map (\((zn,fn),bs) -> (zn,bs)) -- (ZipName,ByteString) -- ZIP
-        C.=$= extractFiles ".csv" -- ((ZipName,FileName), ByteString) -- CSV
-        C.=$= processZips
-
--- retrieve :: [Text] -> [(FileName, URL)] -> AppM ()
--- retrieve knownZipFiles zipLinks = do
---     -- Filter URLs for only those that haven't been inserted
---     let seenfiles = S.fromList knownZipFiles
---         unseen = filter (\(fn,_) -> not $ S.member (T.pack fn) seenfiles) zipLinks
-
---     -- We're done if there aren't any files we haven't loaded yet
---     unless (null unseen) $ do
---         -- Fetch the contents of the zip files
-
---         $(logInfo) $ T.pack ("Fetching " ++ show (length unseen) ++ " new files:")
---         fetched <- liftIO $ fetchFiles unseen
---         $(logInfo) "Done fetching new files"
---         let (ferrs, rslts) = partition' fetched
---         -- unless (rslts `seq` null ferrs) $ do
---         --     $(logWarn) "Fetch failures:"
---         --     mapM_ ($(logInfo) . T.pack . show) ferrs
---         $(logInfo) $ T.pack ("Files fetched: " ++ show (length rslts))
-
---         $(logInfo) "Processing data:"
---         -- mapM_ (process 10) rslts
-        -- $(logInfo) "Done processing data"
+        -- =$= CL.filter (\(fn,_) -> not $ S.member (T.pack fn) seenfiles) -- (FileName,URL)
+        =$= filterM' (\(fn,_) -> not <$> (liftIO (print fn) >> knownZIP fn)) -- (FileName,URL)
+        =$= fetchFiles -- (FileName,ByteString)
+        =$= extractFiles ".zip" -- ((ZipName,FileName), ByteString) -- ZIP
+        -- =$= filterM' (\((_zn,csvn),_) -> not <$> knownCSV csvn)
+        =$= CL.map (\((zn,_fn),bs) -> (zn,bs)) -- (ZipName,ByteString) -- ZIP
+        =$= extractFiles ".csv" -- ((ZipName,FileName), ByteString) -- CSV
+        =$= processZips
 
 
--- process :: Int -> (FileName, ByteString) -> AppM ()
--- process c (fn, bs) =
---     if c <= 0
---         then do
---             $(logWarn) $ T.pack ("Recursion limit reached for URL " ++ fn)
---             return ()
---         else do
---             -- Extract zips from the archive zip files
---             let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ [(fn, bs)]
---             if zextracted `seq` null zeerrs
---                 then do
---                     -- Recurse with any new zip files
---                     mapM_ (process (c-1)) zextracted
---                     runDB $ insert $ AemoZipFile (T.pack fn)
---                     $(logInfo) $ T.pack ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from file " ++ fn)
---                 else processCSVs (fn, bs)
+knownCSV :: CSVName -> AppM Bool
+knownCSV (CSVName f) = runDB $ isJust <$>  selectFirst [AemoCsvFileFileName ==. T.pack f] []
+
+knownZIP :: ZipName -> AppM Bool
+knownZIP (ZipName f) = runDB $ isJust <$>  selectFirst [AemoZipFileFileName ==. T.pack f] []
+
+filterM' :: Monad m => (a -> m Bool) -> Conduit a m a
+filterM' p = C.awaitForever $ \x -> do
+    keep <- lift (p x)
+    when keep $ C.yield x
+
+
 
 processZips :: Sink ((ZipName,CSVName), ByteString) AppM ()
 processZips = C.awaitForever $ \((zp,fn),csv) -> do
         notInDB <- lift $ csvNotInDb fn
-        if notInDB then do
-            case parseAEMO csv of
-                Left err -> liftIO $ print err
-                Right parsed -> lift $ runDB $ do -- Vector CSVRow
-                    insertCSV (fn, parsed)
-                    insert $ AemoZipFile (T.pack zp)
-                    return ()
-            else return ()
+        when notInDB $ case parseAEMO csv of
+            Left err -> $(logWarn) $ T.pack (concat ["processZips: parseAEMO failed on ", fn, " from ", zp,": ",err])
+            Right parsed -> lift $ runDB $ do -- Vector CSVRow
+                insertCSV (fn, parsed)
+                insert $ AemoZipFile (T.pack zp)
+                return ()
 
-
-
-
-
-
-
--- processCSVs :: Sink (FileName, ByteString) AppM ()
--- processCSVs =
---                                                             -- (FileName,Vec CSVRow)
---                                                             -- -> (FileName, )
---     extractFiles ".csv" =$= filterM' (csvNotInDb . snd . fst) =$= C.awaitForever (\(csvname,csv) -> do
---         let eparsed = parseAEMO csv
---         case eparsed of
---             Left err -> liftIO $ print err
---             Right parsed -> lift $ ins (fn, parsed)
---         ) -- CL.map (second parseAEMO) =$= CL.mapM_ (lift . ins)
-
---     where
---         filterM' :: Monad m => (a -> m Bool) -> C.Conduit a m a
---         filterM' p = C.awaitForever $ \x -> do
---             keep <- lift (p x)
---             if keep then C.yield x else return ()
-
---         ins (fn,parsed) = runDB $ do
---             -- Insert data into database
---             mapM_ insertCSV parsed
---             -- Insert zip file filename into database
---             insert $ AemoZipFile (T.pack fn)
---             liftIO $ putChar '.'
-
-    -- -- Extract CSVs from the zip files
-    -- let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ [(fn, bs)]
-    -- unless (extracted `seq` null eerrs) $ do
-    --     $(logWarn) "Extraction failures:"
-    --     mapM_ (\x -> $(logWarn) $ T.pack . show $ x) eerrs
-
-    -- -- Check if CSV is already in db, to avoid new archive zips containing old current CVS files
-    -- newCsvFiles <- filterM (\(f, _) -> csvNotInDb f) extracted
-
-    -- -- Parse the CSV files into database types
-    -- let (perrs, parsed) = partition' . map (second parseAEMO) $ newCsvFiles
-    -- unless (parsed `seq` null perrs) $ do
-    --     $(logWarn) "Parsing failures:"
-    --     mapM_ (\x -> $(logWarn) $ T.pack . show $ x) perrs
-
-    -- runDB $ do
-    --     -- Insert data into database
-    --     mapM_ insertCSV parsed
-    --     -- Insert zip file filename into database
-    --     insert $ AemoZipFile (T.pack fn)
-    --     liftIO $ putChar '.'
-
-    -- return ()
 
 
 insertCSV :: (FileName, Vector CSVRow) -> DBMonad ()
@@ -192,7 +112,6 @@ insertCSV (file, vec) = do
         _  -> do
             $(logError) "Failed to parse CSV"
             mapM_ ($(logError) . T.pack . show) errs
-            error "Failed to parse CSVs"
 
 
 -- | Parse the AEMO CSV files which contain daily data
@@ -204,15 +123,3 @@ parseAEMO file =
     -- as the original document
     let trimmed = C.intercalate "\r\n" . init . drop 1 . C.lines $ file
     in  decode HasHeader trimmed
-
-
-partition' :: [(a, Either b c)] -> ([(a,b)], [(a,c)])
-partition' ps = go ps  where
-    go [] = ([],[])
-    go (x:xs) =
-        let (ls,rs) = go xs
-        in case x of
-            (a, Left b ) -> ((a,b):ls, rs)
-            (a, Right c) -> (ls, (a,c):rs)
-
-
