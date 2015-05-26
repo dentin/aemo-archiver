@@ -15,7 +15,7 @@ cabal clean
 cabal install -j --only-dependencies
 cabal build
 
-mkdir target
+mkdir -p target
 tar czf target/aemo-archiver-${BRANCH}-${DESCRIBE}.tar.gz \
   dist/build/AEMO-archiver/AEMO-archiver \
   dist/build/initDB/initDB \
