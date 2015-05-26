@@ -87,7 +87,7 @@ library
 executable AEMO-archiver
   -- .hs or .lhs file containing the Main module.
   main-is:             AEMO-archiver.hs
-  ghc-options:         -threaded -with-rtsopts=-N
+  ghc-options:         -threaded -with-rtsopts=-N -Wall
 
   -- Modules included in this executable, other than Main.
   -- other-modules:
@@ -136,7 +136,7 @@ executable AEMO-archiver
 executable initDB
   -- .hs or .lhs file containing the Main module.
   main-is:             initDB.hs
-  ghc-options:         -threaded -with-rtsopts=-N
+  ghc-options:         -threaded -with-rtsopts=-N -Wall
 
   -- Modules included in this executable, other than Main.
   -- other-modules:
