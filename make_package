@@ -16,7 +16,7 @@ cabal build
 
 mkdir -p target
 tar czf target/aemo-archiver-${DESCRIBE}.tar.gz \
-  dist/build/AEMO-archiver/AEMO-archiver \
+  dist/build/aemo-archiver/aemo-archiver \
   dist/build/initDB/initDB \
   createdb \
   registrations \

@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 -- The name of the package.
-name:                AEMO-archiver
+name:                aemo-archiver
 
 -- The package version.  See the Haskell package versioning policy (PVP)
 -- for standards guiding when and how versions should be incremented.
@@ -84,7 +84,7 @@ library
   -- Base language which the package is written in.
   default-language:    Haskell2010
 
-executable AEMO-archiver
+executable aemo-archiver
   -- .hs or .lhs file containing the Main module.
   main-is:             AEMO-archiver.hs
   ghc-options:         -threaded -with-rtsopts=-N -Wall
