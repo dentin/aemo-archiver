@@ -13,3 +13,4 @@ cabal.config
 *.sqlite
 *.class
 aemo_database.conf
+target

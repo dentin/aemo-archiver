@@ -33,6 +33,8 @@ main = do
             connPool ?= conn
             -- Get the names of all known zip files in the database
             knownZipFiles <- allDbZips
+            fetchArchiveActualLoad knownZipFiles
 
-            fetchDaily5mActualLoad knownZipFiles
+            knownZipFilesWithArchives <- allDbZips
+            fetchDaily5mActualLoad knownZipFilesWithArchives
 
