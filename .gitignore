@@ -14,3 +14,6 @@ cabal.config
 *.class
 aemo_database.conf
 target
+
+# added by GitSavvy
+/.stack-work/
