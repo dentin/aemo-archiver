@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 module AEMO.CSV where
 
@@ -22,7 +22,7 @@ import           Control.Monad.IO.Class      (liftIO)
 
 import           Database.Persist.Postgresql
 
-import Control.Monad.Logger
+import           Control.Monad.Logger
 
 import           AEMO.Database
 import           AEMO.Types
