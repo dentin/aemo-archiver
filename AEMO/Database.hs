@@ -25,6 +25,7 @@ import           Control.Monad.Logger
 
 import           Database.Persist.Postgresql
 
+import Data.Functor
 
 
 type CSVRow = ((), (), (), (), String, String, Double)
@@ -36,10 +37,8 @@ migrateDb :: AppM ()
 migrateDb = runDB $ runMigration migrateAll
 
 
-csvNotInDb :: FileName -> AppM Bool
-csvNotInDb f = do
-    csv <- runDB $ selectFirst [AemoCsvFileFileName ==. T.pack f] []
-    return (isNothing csv)
+csvNotInDb :: FileName -> DBMonad Bool
+csvNotInDb f = isNothing <$> selectFirst [AemoCsvFileFileName ==. T.pack f] []
 
 
 -- | Run the SQL on the sqlite filesystem path
@@ -54,10 +53,10 @@ runDB act = do
 
 
 -- | Get the names of all known zip files in the database
-allDbZips :: AppM [Text]
-allDbZips = runDB $ do
-    es <- selectList [] []
-    return $ map (aemoZipFileFileName . entityVal) es
+-- allDbZips :: AppM [Text]
+-- allDbZips = runDB $ do
+--     es <- selectList [] []
+--     return $ map (aemoZipFileFileName . entityVal) es
 
 
 

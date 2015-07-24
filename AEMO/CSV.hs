@@ -60,6 +60,7 @@ processDailys knownZips = do
         =$= filterM' (\(fn,_) -> not <$> (liftIO (print fn) >> knownZIP fn)) -- (FileName,URL)
         =$= fetchFiles -- (FileName,ByteString)
         =$= extractFiles ".csv" -- ((ZipName,FileName), ByteString) -- CSV
+        =$= CL.map (\((zp,fn),bs) -> ((zp,CSVName fn), bs))
         =$= processZips
 
 processArchives :: [Text] -> AppM ()
@@ -67,6 +68,7 @@ processArchives knownZips = do
     let seenfiles = S.fromList knownZips
     getARefs aemoPSArchiveURL $$
         joinLinks aemoPSArchiveURL  -- (FileName,URL)
+        =$= CL.map (\(fn,url) -> (ZipName fn, url))
         -- =$= CL.filter (\(fn,_) -> not $ S.member (T.pack fn) seenfiles) -- (FileName,URL)
         =$= filterM' (\(fn,_) -> not <$> (liftIO (print fn) >> knownZIP fn)) -- (FileName,URL)
         =$= fetchFiles -- (FileName,ByteString)
