@@ -13,3 +13,7 @@ cabal.config
 *.sqlite
 *.class
 aemo_database.conf
+target
+
+# added by GitSavvy
+/.stack-work/

@@ -2,6 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 
+
 module AEMO.CSV
     ( processDailys
     , processArchives
@@ -24,7 +25,7 @@ import Data.Maybe (isJust)
 
 import           Database.Persist.Postgresql
 
-import Control.Monad.Logger
+import           Control.Monad.Logger
 
 import           AEMO.Database
 import           AEMO.Types
@@ -39,7 +40,7 @@ import Control.Monad.Trans
 import Control.Arrow (first)
 
 
-Notes to self:
+{-Notes to self:
     - Currently in the process of tagging things with newtypes to show what sorts of String
       we're working with
     - Some how need to keep track of all zip and csv file names while maintaining the same API
@@ -47,7 +48,7 @@ Notes to self:
       relevant parts of the tuple being passed in
     - The "pipeline" is probably only relevant for each zip file download - do all other processing
       in standard monadic code
-
+-}
 
 processDailys :: [Text] -> AppM ()
 processDailys knownZips = do
