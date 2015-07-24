@@ -7,7 +7,6 @@ module AEMO.Database where
 --                                                selectFirst, selectList, (==.))
 
 import           Data.Maybe                   (isNothing)
-import           Data.Text                    (Text)
 import qualified Data.Text                    as T (pack)
 -- import           Control.Monad.Logger         (NoLoggingT)
 import           Control.Monad.IO.Class
@@ -25,7 +24,7 @@ import           Control.Monad.Logger
 
 import           Database.Persist.Postgresql
 
-import qualified Data.ByteString      as B
+import Data.Functor
 
 
 type CSVRow = ((), (), (), (), String, String, Double)
@@ -37,14 +36,15 @@ migrateDb :: AppM ()
 migrateDb = runDB $ runMigration migrateAll
 
 
-csvNotInDb :: FileName -> AppM Bool
-csvNotInDb f = do
-    csv <- runDB $ selectFirst [AemoCsvFileFileName ==. T.pack f] []
-    return (isNothing csv)
+csvNotInDb :: FileName -> DBMonad Bool
+csvNotInDb f = isNothing <$> selectFirst [AemoCsvFileFileName ==. T.pack f] []
+
+zipNotInDb :: FileName -> DBMonad Bool
+zipNotInDb f = isNothing <$> selectFirst [AemoZipFileFileName ==. T.pack f] []
 
 
 -- | Run the SQL on the sqlite filesystem path
-runDB :: DBMonad a-> AppM a
+runDB :: DBMonad a -> AppM a
 runDB act = do
     mconn <- use connPool
     lggr <- askLoggerIO
@@ -55,10 +55,10 @@ runDB act = do
 
 
 -- | Get the names of all known zip files in the database
-allDbZips :: AppM [Text]
-allDbZips = runDB $ do
-    es <- selectList [] []
-    return $ map (aemoZipFileFileName . entityVal) es
+-- allDbZips :: AppM [Text]
+-- allDbZips = runDB $ do
+--     es <- selectList [] []
+--     return $ map (aemoZipFileFileName . entityVal) es
 
 
 

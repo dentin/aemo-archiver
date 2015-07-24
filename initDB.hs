@@ -4,11 +4,9 @@ module Main where
 
 import           Data.ByteString.Lazy        (ByteString)
 import qualified Data.ByteString.Lazy        as B
-import           Data.Vector                 (Vector)
 import qualified Data.Vector                 as V
 
 import           Data.Text                   (Text)
-import qualified Data.Text                   as T
 
 import           Data.Csv                    (HasHeader (..), Header, decode,
                                               decodeByName)
@@ -36,10 +34,7 @@ import           Control.Monad.Logger        (LogLevel (..))
 
 import           Control.Applicative
 import qualified Data.Attoparsec.Text        as A
-import qualified Data.Vector                 as V
 
-
-import           Data.Configurator.Types (Config)
 import qualified Data.Configurator as C
 
 
@@ -92,7 +87,7 @@ main = do
                         putStrLn $ "File does not exist: " ++ gensAndLoads
                         exitWith $ ExitFailure 1
                     bs <- B.readFile gensAndLoads
-                    (hrs,rows) <- either error return $ decodeByName bs :: IO ((Header, V.Vector PowerStation))
+                    (_hrs,rows) <- either error return $ decodeByName bs :: IO ((Header, V.Vector PowerStation))
                     -- rows <- either error return $ decode HasHeader bs :: IO (V.Vector (V.Vector ByteString))
                     print $ V.length rows
                     V.mapM_ print rows
@@ -102,13 +97,8 @@ main = do
             return ()
 
 
-            -- Get the names of all known zip files in the database
-            knownZipFiles <- allDbZips
-            fetchArchiveActualLoad knownZipFiles
-
-            -- Run this twice because the previous call adds many new zip files
-            knownZipFiles <- allDbZips
-            fetchDaily5mActualLoad knownZipFiles
+            fetchArchiveActualLoad
+            fetchDaily5mActualLoad
 
 
 parseGensAndSchedLoads :: ByteString -> Either String (V.Vector (Text, (Double, Double), Text))

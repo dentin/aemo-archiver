@@ -10,7 +10,6 @@ import           System.IO                   (BufferMode (NoBuffering),
 import           Database.Persist.Postgresql
 
 import           AEMO.CSV
-import           AEMO.Database
 import           AEMO.Types
 
 import           Control.Lens
@@ -31,10 +30,6 @@ main = do
     execAppM (AS Nothing makeLog LevelInfo) $ do
         withPostgresqlPool connStr conns $ \conn -> do
             connPool ?= conn
-            -- Get the names of all known zip files in the database
-            knownZipFiles <- allDbZips
-            fetchArchiveActualLoad knownZipFiles
-
-            knownZipFilesWithArchives <- allDbZips
-            fetchDaily5mActualLoad knownZipFilesWithArchives
+            fetchArchiveActualLoad
+            fetchDaily5mActualLoad
 

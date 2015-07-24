@@ -13,8 +13,7 @@ import           Control.Monad               (filterM, unless)
 import qualified Data.ByteString.Lazy.Char8  as C (intercalate, lines)
 import           Data.Csv                    (HasHeader (..), decode)
 import           Data.Either                 (partitionEithers)
-import qualified Data.HashSet                as S (fromList, member)
-import           Data.Text                   (Text)
+-- import           Data.Text                   (Text)
 import qualified Data.Text                   as T (pack)
 -- import           Data.List.Split              (chunksOf)
 
@@ -28,42 +27,39 @@ import           AEMO.Database
 import           AEMO.Types
 import           AEMO.WebScraper
 
-fetchDaily5mActualLoad :: [Text] -> AppM ()
-fetchDaily5mActualLoad knownZipFiles = do
+fetchDaily5mActualLoad :: AppM ()
+fetchDaily5mActualLoad = do
     $(logInfo) "Finding new 5 minute zips..."
     zipLinks <- liftIO $ joinLinks aemo5mPSURL
-    retrieve knownZipFiles zipLinks
+    retrieve zipLinks
 
 
-fetchArchiveActualLoad :: [Text] -> AppM ()
-fetchArchiveActualLoad knownZipFiles = do
+fetchArchiveActualLoad :: AppM ()
+fetchArchiveActualLoad = do
     $(logInfo) "Finding new archive zips..."
     zipLinks <- liftIO $ joinLinks aemoPSArchiveURL
-    retrieve knownZipFiles zipLinks
+    retrieve zipLinks
 
 
-retrieve :: [Text] -> [(FileName, URL)] -> AppM ()
-retrieve knownZipFiles zipLinks = do
-    -- Filter URLs for only those that haven't been inserted
-    let seenfiles = S.fromList knownZipFiles
-        unseen = filter (\(fn,_) -> not $ S.member (T.pack fn) seenfiles) zipLinks
+retrieve :: [(FileName, URL)] -> AppM ()
+retrieve zipLinks = do
 
-    -- We're done if there aren't any files we haven't loaded yet
-    unless (null unseen) $ do
-        -- Fetch the contents of the zip files
+    -- Fetch the contents of the zip files
 
-        $(logInfo) $ T.pack ("Fetching " ++ show (length unseen) ++ " new files:")
-        fetched <- liftIO $ fetchFiles unseen
-        $(logInfo) "Done fetching new files"
-        let (ferrs, rslts) = partition' fetched
-        unless (rslts `seq` null ferrs) $ do
-            $(logWarn) "Fetch failures:"
-            mapM_ ($(logInfo) . T.pack . show) ferrs
-        $(logInfo) $ T.pack ("Files fetched: " ++ show (length rslts))
+    unseen <- runDB $ filterM (zipNotInDb . fst) zipLinks
 
-        $(logInfo) "Processing data:"
-        mapM_ (process 10) rslts
-        $(logInfo) "Done processing data"
+    $(logInfo) $ T.pack ("Fetching " ++ show (length unseen) ++ " new files:")
+    fetched <- liftIO $ fetchFiles unseen
+    $(logInfo) "Done fetching new files"
+    let (ferrs, rslts) = partition' fetched
+    unless (rslts `seq` null ferrs) $ do
+        $(logWarn) "Fetch failures:"
+        mapM_ ($(logInfo) . T.pack . show) ferrs
+    $(logInfo) $ T.pack ("Files fetched: " ++ show (length rslts))
+
+    $(logInfo) "Processing data:"
+    mapM_ (process 10) rslts
+    $(logInfo) "Done processing data"
 
 
 process :: Int -> (FileName, ByteString) -> AppM ()
@@ -79,7 +75,7 @@ process c (fn, bs) =
                 then do
                     -- Recurse with any new zip files
                     mapM_ (process (c-1)) zextracted
-                    runDB $ insert $ AemoZipFile (T.pack fn)
+                    _ <- runDB $ insert $ AemoZipFile (T.pack fn)
                     $(logInfo) $ T.pack ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from file " ++ fn)
                 else processCSVs (fn, bs)
 
@@ -93,7 +89,7 @@ processCSVs (fn, bs) = do
         mapM_ (\x -> $(logWarn) $ T.pack . show $ x) eerrs
 
     -- Check if CSV is already in db, to avoid new archive zips containing old current CVS files
-    newCsvFiles <- filterM (\(f, _) -> csvNotInDb f) extracted
+    newCsvFiles <- runDB $ filterM (csvNotInDb . fst) extracted
 
     -- Parse the CSV files into database types
     let (perrs, parsed) = partition' . map (second parseAEMO) $ newCsvFiles
@@ -105,7 +101,7 @@ processCSVs (fn, bs) = do
         -- Insert data into database
         mapM_ insertCSV parsed
         -- Insert zip file filename into database
-        insert $ AemoZipFile (T.pack fn)
+        _ <- insert $ AemoZipFile (T.pack fn)
         liftIO $ putChar '.'
 
     return ()
