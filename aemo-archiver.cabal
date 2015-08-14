@@ -90,7 +90,10 @@ executable aemo-archiver
   ghc-options:         -threaded -with-rtsopts=-N -Wall
 
   -- Modules included in this executable, other than Main.
-  -- other-modules:
+  other-modules: AEMO.CSV
+                 , AEMO.Database
+                 , AEMO.Types
+                 , AEMO.WebScraper
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
@@ -141,8 +144,10 @@ executable initDB
   ghc-options:         -threaded -with-rtsopts=-N -Wall
 
   -- Modules included in this executable, other than Main.
-  -- other-modules:
-
+  other-modules: AEMO.CSV
+                 , AEMO.Database
+                 , AEMO.Types
+                 , AEMO.WebScraper
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
 
