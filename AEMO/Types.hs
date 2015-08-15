@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                        #-}
 {-# LANGUAGE EmptyDataDecls             #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GADTs                      #-}
@@ -18,7 +19,9 @@ import           Database.Persist.TH            (mkMigrate, mkPersist,
                                                  persistLowerCase, share,
                                                  sqlSettings)
 
+#if !MIN_VERSION_base(4,8,0)
 import           Control.Applicative
+#endif
 import           Control.Monad.Base
 import           Control.Monad.IO.Class
 import           Control.Monad.Logger
@@ -31,7 +34,7 @@ import           Database.Persist.Postgresql
 
 import           Control.Lens                   hiding ((.=))
 
-import qualified Data.ByteString                as B
+import qualified Data.ByteString.Char8          as B8
 
 import           System.Log.FastLogger
 
@@ -39,9 +42,14 @@ import           Control.Exception              (SomeException, try)
 
 import           Data.Csv
 
-import           Data.Time.Format               (formatTime)
 import           Data.Time.LocalTime
+
+#if MIN_VERSION_time(1,5,0)
+import           Data.Time.Format               (defaultTimeLocale, formatTime)
+#else
+import           Data.Time.Format               (formatTime)
 import           System.Locale                  (defaultTimeLocale)
+#endif
 
 
 
@@ -103,7 +111,7 @@ runAppPool pool lev app = try $ do
 
 makeLog :: LogLevel -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
 makeLog minLev loc src lev str = if lev >= minLev
-    then B.putStrLn . fromLogStr $ defaultLogStr loc src lev str
+    then B8.putStrLn . fromLogStr $ defaultLogStr loc src lev str
     else return ()
 
 
