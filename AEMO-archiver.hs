@@ -16,7 +16,6 @@ import           Control.Lens
 
 import Control.Monad.Logger (LogLevel(..))
 
-import           Data.Configurator.Types (Config)
 import qualified Data.Configurator as C
 
 

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -32,10 +33,13 @@ import           Control.Lens
 
 import           Control.Monad.Logger        (LogLevel (..))
 
+#if !MIN_VERSION_base(4,8,0)
 import           Control.Applicative
+#endif
+
 import qualified Data.Attoparsec.Text        as A
 
-import qualified Data.Configurator as C
+import qualified Data.Configurator           as C
 
 
 gensAndLoads :: FilePath
