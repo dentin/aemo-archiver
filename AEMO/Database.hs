@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module AEMO.Database where
@@ -11,10 +12,15 @@ import qualified Data.Text                    as T (pack)
 -- import           Control.Monad.Logger         (NoLoggingT)
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Resource (ResourceT, runResourceT)
+
+#if MIN_VERSION_time(1,5,0)
+import           Data.Time                    (ZonedTime, zonedTimeToUTC)
+import           Data.Time.Format             (defaultTimeLocale, parseTimeM)
+#else
 import           Data.Time                    (ZonedTime, parseTime,
                                                zonedTimeToUTC)
-
 import           System.Locale                (defaultTimeLocale)
+#endif
 
 import           AEMO.Types
 
@@ -24,7 +30,9 @@ import           Control.Monad.Logger
 
 import           Database.Persist.Postgresql
 
+#if !MIN_VERSION_base(4,8,0)
 import Data.Functor
+#endif
 
 
 type CSVRow = ((), (), (), (), String, String, Double)
@@ -54,21 +62,18 @@ runDB act = do
         Nothing -> error "runDB: no database connection found!"
 
 
--- | Get the names of all known zip files in the database
--- allDbZips :: AppM [Text]
--- allDbZips = runDB $ do
---     es <- selectList [] []
---     return $ map (aemoZipFileFileName . entityVal) es
-
-
-
 
 -- | Takes a tuple parsed from the AEMO CSV data and produces a PowerStationDatum. Time of recording is
 -- parsed by appending the +1000 timezone to ensure the correct UTC time is parsed.
 csvTupleToPowerStationDatum :: AemoCsvFileId -> CSVRow -> Either String PowerStationDatum
 csvTupleToPowerStationDatum fid (_D, _DISPATCH, _UNIT_SCADA, _1, dateStr, duid, val) = do
-    -- TODO: fix the "+1000" timezone offset - first check if AEMO actually changes timezone, I guess otherwise this is fine...
-    let mzt = parseTime defaultTimeLocale "%0Y/%m/%d %H:%M:%S%z" (dateStr ++ "+1000") :: Maybe ZonedTime
+    -- TODO: fix the "+1000" timezone offset - first check if AEMO actually changes timezone,
+    --       I guess otherwise this is fine...
+    let
+        #if MIN_VERSION_time(1,5,0)
+        parseTime = parseTimeM True
+        #endif
+        mzt = parseTime defaultTimeLocale "%0Y/%m/%d %H:%M:%S%z" (dateStr ++ "+1000") :: Maybe ZonedTime
     case mzt of
         Nothing     -> Left $ "Failed to parse time \"" ++ dateStr ++ "\""
         Just zt     ->
