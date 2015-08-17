@@ -70,9 +70,9 @@ csvTupleToPowerStationDatum fid (_D, _DISPATCH, _UNIT_SCADA, _1, dateStr, duid, 
     -- TODO: fix the "+1000" timezone offset - first check if AEMO actually changes timezone,
     --       I guess otherwise this is fine...
     let
-        #if MIN_VERSION_time(1,5,0)
+#if MIN_VERSION_time(1,5,0)
         parseTime = parseTimeM True
-        #endif
+#endif
         mzt = parseTime defaultTimeLocale "%0Y/%m/%d %H:%M:%S%z" (dateStr ++ "+1000") :: Maybe ZonedTime
     case mzt of
         Nothing     -> Left $ "Failed to parse time \"" ++ dateStr ++ "\""
