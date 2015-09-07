@@ -1,15 +1,15 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFoldable    #-}
+{-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveTraversable #-}
 
 module AEMO.ZipTree where
 
 
+import           Control.Applicative
 import           Control.Monad
+import           Data.Foldable        hiding (concat, concatMap, elem)
+import           Data.Functor
 import           Data.Traversable     hiding (mapM)
-import Data.Foldable hiding (elem, concat, concatMap)
-import Data.Functor
-import Control.Applicative
 
 import           Data.ByteString.Lazy (ByteString)
 
@@ -17,8 +17,9 @@ import           Data.Char            (toLower)
 import           Data.List            (isSuffixOf, partition)
 
 
-import           Codec.Archive.Zip    (filesInArchive, findEntryByPath,
-                                       fromEntry, toArchiveOrFail, Archive(..), Entry(..))
+import           Codec.Archive.Zip    (Archive (..), Entry (..), filesInArchive,
+                                       findEntryByPath, fromEntry,
+                                       toArchiveOrFail)
 
 
 data ZipTree a = ZipFile FilePath ByteString
