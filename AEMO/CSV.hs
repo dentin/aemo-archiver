@@ -74,7 +74,11 @@ proc depth pair = case toZipTree depth pair of
 insertZipTree :: ZipTree ByteString -> DBMonad ()
 insertZipTree = void . travseseWithParentAndName
     (\fp -> insert (AemoZipFile (T.pack fp)) >> return fp)
-    (\fp -> insert (AemoZipFile (T.pack fp)) >> return ())
+    (\fp -> do
+        let msg = "found zip file when only files were expected: " ++ fp
+        $(logError) $ T.pack $ msg
+        fail msg
+    )
     (\parent name bs -> do
         when (isSuffixOf ".csv" . map toLower $ name) $ do
             unknownCsv <- csvNotInDb name
