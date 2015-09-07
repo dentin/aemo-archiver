@@ -1,18 +1,24 @@
 {-# LANGUAGE TupleSections #-}
 
+
 module AEMO.WebScraper where
 
 import           AEMO.Types           (FileName)
+
 import           Codec.Archive.Zip    (filesInArchive, findEntryByPath,
                                        fromEntry, toArchiveOrFail)
+
 import           Control.DeepSeq      (NFData, deepseq)
 import           Control.Exception    (SomeException, catch)
+
 import           Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy as BSL (empty)
+
 import           Data.Char            (toLower)
 import           Data.List            (isSuffixOf)
 import           Data.List.Split      (splitOn)
 import           Data.Maybe           (fromMaybe, mapMaybe)
+
 import           Network.HTTP         (HStream, Request, Response,
                                        defaultNormalizeRequestOptions,
                                        failHTTPS, getAuth, getRequest, host,
@@ -22,6 +28,7 @@ import           Network.HTTP         (HStream, Request, Response,
 import           Network.Stream       (ConnError (..), Result)
 import           Network.URI          (escapeURIString, parseURI,
                                        parseURIReference, relativeTo)
+
 import           Text.HTML.TagSoup    (Tag (TagOpen), parseTags)
 
 type URL = String
@@ -32,6 +39,7 @@ aemo5mPSURL =  "http://www.nemweb.com.au/REPORTS/CURRENT/Dispatch_SCADA/"
 
 aemoPSArchiveURL :: URL
 aemoPSArchiveURL =  "http://www.nemweb.com.au/REPORTS/ARCHIVE/Dispatch_SCADA/"
+
 
 
 -- | Given a URL, finds all HTML links on the page

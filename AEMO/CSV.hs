@@ -7,15 +7,17 @@ import           Data.ByteString.Lazy        (ByteString)
 -- import qualified Data.ByteString.Lazy        as B
 import           Data.Vector                 (Vector)
 import qualified Data.Vector                 as V
--- TODO: why Char8?
-import           Control.Arrow               (second)
-import           Control.Monad               (filterM, unless)
+
+import           Control.Monad               (filterM, unless, void, when)
 import qualified Data.ByteString.Lazy.Char8  as C (intercalate, lines)
 import           Data.Csv                    (HasHeader (..), decode)
 import           Data.Either                 (partitionEithers)
 -- import           Data.Text                   (Text)
 import qualified Data.Text                   as T (pack)
 -- import           Data.List.Split              (chunksOf)
+
+import           Data.Char                   (toLower)
+import           Data.List                   (isSuffixOf)
 
 import           Control.Monad.IO.Class      (liftIO)
 
@@ -26,23 +28,24 @@ import           Control.Monad.Logger
 import           AEMO.Database
 import           AEMO.Types
 import           AEMO.WebScraper
+import           AEMO.ZipTree
 
 fetchDaily5mActualLoad :: AppM ()
 fetchDaily5mActualLoad = do
     $(logInfo) "Finding new 5 minute zips..."
     zipLinks <- liftIO $ joinLinks aemo5mPSURL
-    retrieve zipLinks
+    retrieve 0 zipLinks
 
 
 fetchArchiveActualLoad :: AppM ()
 fetchArchiveActualLoad = do
     $(logInfo) "Finding new archive zips..."
     zipLinks <- liftIO $ joinLinks aemoPSArchiveURL
-    retrieve zipLinks
+    retrieve 1 zipLinks
 
 
-retrieve :: [(FileName, URL)] -> AppM ()
-retrieve zipLinks = do
+retrieve :: Int -> [(FileName, URL)] -> AppM ()
+retrieve depth zipLinks = do
 
     -- Fetch the contents of the zip files
 
@@ -58,67 +61,38 @@ retrieve zipLinks = do
     $(logInfo) $ T.pack ("Files fetched: " ++ show (length rslts))
 
     $(logInfo) "Processing data:"
-    mapM_ (process 10) rslts
+    mapM_ (proc depth) rslts
     $(logInfo) "Done processing data"
 
 
-process :: Int -> (FileName, ByteString) -> AppM ()
-process c (fn, bs) =
-    if c <= 0
-        then do
-            $(logWarn) $ T.pack ("Recursion limit reached for URL " ++ fn)
-            return ()
-        else do
-            -- Extract zips from the archive zip files
-            let (zeerrs, zextracted) = partitionEithers . extractFiles ".zip" $ [(fn, bs)]
-            if zextracted `seq` null zeerrs
-                then do
-                    -- Recurse with any new zip files
-                    mapM_ (process (c-1)) zextracted
-                    _ <- runDB $ insert $ AemoZipFile (T.pack fn)
-                    $(logInfo) $ T.pack ("\nProcessed " ++ show (length zextracted) ++ " archive zip files from file " ++ fn)
-                else processCSVs (fn, bs)
+proc :: Int -> (FileName,ByteString) -> AppM ()
+proc depth pair = case toZipTree depth pair of
+    Left str -> $(logError) $ T.pack $ "Failed to extract data from fip file: " ++ fst pair ++ "\"" ++ str ++ "\""
+    Right zt -> runDB $ insertZipTree zt
 
 
-processCSVs :: (FileName, ByteString) -> AppM ()
-processCSVs (fn, bs) = do
-    -- Extract CSVs from the zip files
-    let (eerrs, extracted) = partitionEithers . extractFiles ".csv" $ [(fn, bs)]
-    unless (extracted `seq` null eerrs) $ do
-        $(logWarn) "Extraction failures:"
-        mapM_ (\x -> $(logWarn) $ T.pack . show $ x) eerrs
+insertZipTree :: ZipTree ByteString -> DBMonad ()
+insertZipTree = void . travseseWithParentAndName
+    (\fp -> insert (AemoZipFile (T.pack fp)) >> return fp)
+    (\fp -> insert (AemoZipFile (T.pack fp)) >> return ())
+    (\parent name bs -> do
+        when (isSuffixOf ".csv" . map toLower $ name) $ do
+            unknownCsv <- csvNotInDb name
+            when unknownCsv $ case parseAEMO bs of
+                Left str -> fail str
+                Right vec -> do
+                    fid <- insert $ AemoCsvFile (T.pack name) (V.length vec)
+                    let (errs,psdata) = partitionEithers . map (csvTupleToPowerStationDatum fid) . V.toList $ vec
+                    case errs of
+                        [] -> do
+                            insertMany_  psdata
+                            $(logInfo) $ T.pack $ "Inserted data from " ++ show parent
+                        _  -> do
+                            $(logError) "Failed to parse CSV"
+                            mapM_ ($(logError) . T.pack . show) errs
+                            fail "Failed to parse CSVs"
+        )
 
-    -- Check if CSV is already in db, to avoid new archive zips containing old current CVS files
-    newCsvFiles <- runDB $ filterM (csvNotInDb . fst) extracted
-
-    -- Parse the CSV files into database types
-    let (perrs, parsed) = partition' . map (second parseAEMO) $ newCsvFiles
-    unless (parsed `seq` null perrs) $ do
-        $(logWarn) "Parsing failures:"
-        mapM_ (\x -> $(logWarn) $ T.pack . show $ x) perrs
-
-    runDB $ do
-        -- Insert data into database
-        mapM_ insertCSV parsed
-        -- Insert zip file filename into database
-        _ <- insert $ AemoZipFile (T.pack fn)
-        liftIO $ putChar '.'
-
-    return ()
-
-
-insertCSV :: (String, Vector CSVRow) -> DBMonad ()
-insertCSV (file, vec) = do
-    fid <- insert $ AemoCsvFile (T.pack file) (V.length vec)
-    let (errs,psdata) = partitionEithers . map (csvTupleToPowerStationDatum fid) . V.toList $ vec
-    case errs of
-        [] -> do
-            insertMany_  psdata
-            $(logInfo) $ T.pack $ "Inserted data from " ++ file
-        _  -> do
-            $(logError) "Failed to parse CSV"
-            mapM_ ($(logError) . T.pack . show) errs
-            error "Failed to parse CSVs"
 
 
 -- | Parse the AEMO CSV files which contain daily data
