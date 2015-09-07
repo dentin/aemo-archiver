@@ -51,6 +51,7 @@ library
                    AEMO.Database,
                    AEMO.CSV,
                    AEMO.WebScraper
+                   AEMO.ZipTree
 
   build-depends:        base                  >= 4.6      && < 4.9
                         , bytestring            >= 0.10     && < 0.11
@@ -89,6 +90,7 @@ executable aemo-archiver
                  , AEMO.Database
                  , AEMO.Types
                  , AEMO.WebScraper
+                 , AEMO.ZipTree
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
@@ -137,6 +139,7 @@ executable initDB
                  , AEMO.Database
                  , AEMO.Types
                  , AEMO.WebScraper
+                 , AEMO.ZipTree
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
 

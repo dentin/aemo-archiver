@@ -8,7 +8,6 @@ module AEMO.ZipTree where
 import           Control.Applicative
 import           Control.Monad
 import           Data.Foldable        hiding (concat, concatMap, elem)
-import           Data.Functor
 import           Data.Traversable     hiding (mapM)
 
 import           Data.ByteString.Lazy (ByteString)
