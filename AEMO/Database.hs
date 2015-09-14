@@ -45,10 +45,10 @@ migrateDb = runDB $ runMigration migrateAll
 
 
 csvNotInDb :: FileName -> DBMonad Bool
-csvNotInDb f = isNothing <$> selectFirst [AemoCsvFileFileName ==. T.pack f] []
+csvNotInDb f = (== 0) <$> count [AemoCsvFileFileName ==. T.pack f]
 
 zipNotInDb :: FileName -> DBMonad Bool
-zipNotInDb f = isNothing <$> selectFirst [AemoZipFileFileName ==. T.pack f] []
+zipNotInDb f = (== 0) <$> count [AemoZipFileFileName ==. T.pack f]
 
 
 -- | Run the SQL on the sqlite filesystem path
