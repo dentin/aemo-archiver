@@ -187,8 +187,8 @@ instance ToNamedRecord PowerStation where
 instance ToNamedRecord PowerStationDatum where
     toNamedRecord (PowerStationDatum {..}) = namedRecord
         [ "DUID"        .= powerStationDatumDuid
-        , "Sample Time (AEST)" .= formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S %Z"
-                                                (utcToLocalTime aest powerStationDatumSampleTime)
+        , "Sample Time (AEST)" .= formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%z"
+                                                (utcToZonedTime aest powerStationDatumSampleTime)
         , "MW"          .= powerStationDatumMegaWatt
         ]
 
@@ -196,7 +196,7 @@ aest :: TimeZone
 aest = TimeZone
             { timeZoneMinutes = 600
             , timeZoneSummerOnly = False
-            , timeZoneName = "AEST"
+            , timeZoneName = "" -- "AEST"
             }
 
 instance FromNamedRecord PowerStation where
