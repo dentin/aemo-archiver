@@ -1,3 +1,6 @@
+### 0.8.0.0, 2015-25-09
+* Create a "materialized view" of the most recent time a DUID has been seen.
+
 ### 0.7.0.1, 2015-09-22
  * Ensure that all data in a zip file is inserted in a single transaction (including archives)
 
