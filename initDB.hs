@@ -101,8 +101,10 @@ main = do
             return ()
 
 
-            fetchArchiveActualLoad
-            fetchDaily5mActualLoad
+            arcs   <- fetchArchiveActualLoad
+            dailys <- fetchDaily5mActualLoad
+            when (arcs + dailys > 0)
+                refreshLatestDUIDTime
 
 
 parseGensAndSchedLoads :: ByteString -> Either String (V.Vector (Text, (Double, Double), Text))

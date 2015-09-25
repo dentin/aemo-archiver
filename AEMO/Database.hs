@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module AEMO.Database where
 
@@ -7,11 +8,14 @@ module AEMO.Database where
 --                                                runMigration, runSqlPersistMPool,
 --                                                selectFirst, selectList, (==.))
 
-import           Data.Maybe                   (isNothing)
-import qualified Data.Text                    as T (pack)
+import qualified Data.Text                    as T
 -- import           Control.Monad.Logger         (NoLoggingT)
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Resource (ResourceT, runResourceT)
+import Control.Monad.Reader (runReaderT)
+
+import Data.Pool (withResource)
+
 
 #if MIN_VERSION_time(1,5,0)
 import           Data.Time                    (ZonedTime, zonedTimeToUTC)
@@ -34,6 +38,7 @@ import           Database.Persist.Postgresql
 import Data.Functor
 #endif
 
+import Data.String.Here
 
 type CSVRow = ((), (), (), (), String, String, Double)
 -- type DBMonad a = SqlPersistT (NoLoggingT (ResourceT IO)) a
@@ -41,7 +46,24 @@ type DBMonad a = SqlPersistT (LoggingT (ResourceT IO)) a
 
 
 migrateDb :: AppM ()
-migrateDb = runDB $ runMigration migrateAll
+migrateDb = do
+    runDB $ runMigration migrateAll
+
+    Just conn <- use connPool
+    withResource conn $ \sqlbknd -> do
+        liftIO $ flip runReaderT sqlbknd $
+            rawExecute [here|
+                        BEGIN;
+                           DROP MATERIALIZED VIEW IF EXISTS latest_power_station_datum;
+                           CREATE MATERIALIZED VIEW latest_power_station_datum
+                           AS
+                               SELECT duid, MAX(sample_time) AS sample_time
+                               FROM power_station_datum
+                               GROUP BY duid
+                               WITH NO DATA;
+                        COMMIT;
+                        |]
+                       []
 
 
 csvNotInDb :: FileName -> DBMonad Bool
@@ -61,6 +83,13 @@ runDB act = do
         Just conn -> liftIO $ runResourceT $ flip runLoggingT lggr $ runSqlPool act conn
         Nothing -> error "runDB: no database connection found!"
 
+
+refreshLatestDUIDTime :: AppM ()
+refreshLatestDUIDTime = do
+    Just conn <- use connPool
+    withResource conn $ \sqlbknd -> do
+        liftIO $ flip runReaderT sqlbknd $
+            rawExecute "REFRESH MATERIALIZED VIEW latest_power_station_datum" []
 
 
 -- | Takes a tuple parsed from the AEMO CSV data and produces a PowerStationDatum. Time of recording is

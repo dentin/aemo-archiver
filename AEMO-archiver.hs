@@ -11,6 +11,9 @@ import           Database.Persist.Postgresql
 
 import           AEMO.CSV
 import           AEMO.Types
+import           AEMO.Database (refreshLatestDUIDTime)
+
+import Control.Monad (when)
 
 import           Control.Lens
 
@@ -29,6 +32,8 @@ main = do
     execAppM (AS Nothing makeLog LevelInfo) $ do
         withPostgresqlPool connStr conns $ \conn -> do
             connPool ?= conn
-            fetchArchiveActualLoad
-            fetchDaily5mActualLoad
+            arcs   <- fetchArchiveActualLoad
+            dailys <- fetchDaily5mActualLoad
+            when (arcs + dailys > 0)
+                refreshLatestDUIDTime
 

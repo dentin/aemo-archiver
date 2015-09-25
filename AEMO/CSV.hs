@@ -30,21 +30,21 @@ import           AEMO.Types
 import           AEMO.WebScraper
 import           AEMO.ZipTree
 
-fetchDaily5mActualLoad :: AppM ()
+fetchDaily5mActualLoad :: AppM Int
 fetchDaily5mActualLoad = do
     $(logInfo) "Finding new 5 minute zips..."
     zipLinks <- liftIO $ joinLinks aemo5mPSURL
     retrieve 0 zipLinks
 
 
-fetchArchiveActualLoad :: AppM ()
+fetchArchiveActualLoad :: AppM Int
 fetchArchiveActualLoad = do
     $(logInfo) "Finding new archive zips..."
     zipLinks <- liftIO $ joinLinks aemoPSArchiveURL
     retrieve 1 zipLinks
 
 
-retrieve :: Int -> [(FileName, URL)] -> AppM ()
+retrieve :: Int -> [(FileName, URL)] -> AppM Int
 retrieve depth zipLinks = do
 
     -- Fetch the contents of the zip files
@@ -63,6 +63,7 @@ retrieve depth zipLinks = do
     $(logInfo) "Processing data:"
     mapM_ (proc depth) rslts
     $(logInfo) "Done processing data"
+    return (length unseen)
 
 
 proc :: Int -> (FileName,ByteString) -> AppM ()
