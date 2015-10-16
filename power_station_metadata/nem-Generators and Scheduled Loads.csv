@@ -3,6 +3,7 @@ Participant,"Station Name",Region,"Dispatch Type",Category,Classification,"Fuel 
 "AGL Hydro Partnership","Banimboola Power Station",VIC1,Generator,Market,Non-Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",3,2.25,Y,BAPS,-,-,
 "AGL Hydro Partnership","Bogong / Mckay Power Station",VIC1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity"," B 1-2",80,Y,MCKAY1,300,300,60
 "AGL Hydro Partnership","Bogong / Mckay Power Station",VIC1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity"," M1-6",25,Y,MCKAY1,-,-,
+"AGL Hydro Partnership","Broken Hill Solar Plant",NSW1,Generator,Market,Semi-Scheduled,Solar,Solar,Renewable,"Photovoltaic Flat Panel",.1-80,0.672,Y,BROKENH1,53.76,53.76,
 "AGL Hydro Partnership","Burrendong Hydro Power Station",NSW1,Generator,Market,Non-Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,19,N,BDONGHYD,19,19,
 "AGL Hydro Partnership","Clover Power Station",VIC1,Generator,Non-Market,Non-Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1-2,14.5,N,-,30,30,
 "AGL Hydro Partnership","Copeton Hydro Power Station",NSW1,Generator,Market,Non-Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,24,N,COPTNHYD,24,24,
@@ -56,9 +57,8 @@ Participant,"Station Name",Region,"Dispatch Type",Category,Classification,"Fuel 
 "AGL SA Generation Pty Limited ","Torrens Island Power Station ""B""",SA1,Generator,Market,Scheduled,Fossil,"Natural Gas / Fuel Oil",Combustion,"Steam Sub-Critical",3,200,N,TORRB3,200,210,20
 "AGL SA Generation Pty Limited ","Torrens Island Power Station ""B""",SA1,Generator,Market,Scheduled,Fossil,"Natural Gas / Fuel Oil",Combustion,"Steam Sub-Critical",4,200,N,TORRB4,200,210,20
 "AGL Sales (Queensland Electricity) Pty Limited","Grange Avenue Power Station",NSW1,Generator,Market,Non-Scheduled,"Renewable/ Biomass / Waste","Landfill Methane / Landfill Gas",Combustion,"Compression Reciprocating Engine",1,2,N,GRANGEAV,2,2,
-"Alcoa of Australia Limited","Anglesea Power Station",VIC1,Generator,Market,Scheduled,Fossil,"Brown Coal",Combustion,"Steam Sub-Critical",1,165,N,APS,165,165,4
 "Alinta Energy Retail Sales Pty Ltd","Bald Hills Wind Farm",VIC1,Generator,Market,Semi-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",.1-52,106.6,N,BALDHWF1,106.6,120,
-"Alinta Energy Retail Sales Pty Ltd","SA Water Bolivar Waste Water Treatment (WWT) Plant",SA1,Generator,Market,Non-Scheduled,Sewerage,"Waste Water",Renewable,"Pump Storage",4,9.9,N,BOLIVAR1,9.9,9.9,
+"Alinta Energy Retail Sales Pty Ltd","SA Water Bolivar Waste Water Treatment (WWT) Plant",SA1,Generator,Market,Non-Scheduled,"Renewable/ Biomass / Waste","Waste Water / Sewerage",Combustion,"Compression Reciprocating Engine",4,9.9,N,BOLIVAR1,9.9,9.9,
 "Aurora Energy (Tamar Valley) Pty Ltd trading as AETV Power","Bairnsdale Power Station",VIC1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",1,47,N,BDL01,47,47,4
 "Aurora Energy (Tamar Valley) Pty Ltd trading as AETV Power","Bairnsdale Power Station",VIC1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",2,47,N,BDL02,47,47,4
 "Aurora Energy (Tamar Valley) Pty Ltd trading as AETV Power","Bell Bay Three Power Station",TAS1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",1,35,N,BBTHREE1,35,49,10
@@ -69,14 +69,14 @@ Participant,"Station Name",Region,"Dispatch Type",Category,Classification,"Fuel 
 "Aurora Energy (Tamar Valley) Pty Ltd trading as AETV Power","Tamar Valley Peaking  Power Station",TAS1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",1,58,N,TVPP104,58,58,10
 "Basslink Pty Ltd","Basslink HVDC Link",TAS1,"Network Service Provider",Market,Scheduled,,,,,1,478,N,BLNKTAS,478,478,200
 "Basslink Pty Ltd","Basslink HVDC Link",VIC1,"Network Service Provider",Market,Scheduled,,,,,1,594,N,BLNKVIC,594,594,200
-"Boco Rock Wind Farm Pty Ltd","Boco Rock Wind Farm",NSW1,Generator,Market,Semi-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",31,52,N,BOCORWF1,52,52,201
-"Boco Rock Wind Farm Pty Ltd","Boco Rock Wind Farm",NSW1,Generator,Market,Semi-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",36,61,N,BOCORWF1,61,61,
+"Boco Rock Wind Farm Pty Ltd","Boco Rock Wind Farm",NSW1,Generator,Market,Semi-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",.1-58,1.7,N,BOCORWF1,98.6,98.6,201
+"Boco Rock Wind Farm Pty Ltd","Boco Rock Wind Farm",NSW1,Generator,Market,Semi-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",59-67,1.62,N,BOCORWF1,14.58,14.58,201
 "Braemar Power Project Pty Ltd","Braemar Power Station ",QLD1,Generator,Market,Scheduled,Fossil,"Coal Seam Methane",Combustion,"Open Cycle Gas turbines (OCGT)",1,168,N,BRAEMAR1,168,173,43
 "Braemar Power Project Pty Ltd","Braemar Power Station ",QLD1,Generator,Market,Scheduled,Fossil,"Coal Seam Methane",Combustion,"Open Cycle Gas turbines (OCGT)",2,168,N,BRAEMAR2,168,173,43
 "Braemar Power Project Pty Ltd","Braemar Power Station ",QLD1,Generator,Market,Scheduled,Fossil,"Coal Seam Methane",Combustion,"Open Cycle Gas turbines (OCGT)",3,168,N,BRAEMAR3,168,173,43
 "Callide Power Trading Pty Limited","Callide Power Plant",QLD1,Generator,Market,Scheduled,Fossil,"Black Coal",Combustion,"Steam Super Critical",3,420,N,CPP_3,420,500,100
 "Callide Power Trading Pty Limited","Callide Power Plant",QLD1,Generator,Market,Scheduled,Fossil,"Black Coal",Combustion,"Steam Super Critical",4,420,N,CPP_4,420,500,100
-"Canunda Power Pty Ltd","Canunda Wind Farm",SA1,Generator,Non-Market,Non-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",1-23,2,N,-,46,46,
+"Canunda Power Pty Ltd","Canunda Wind Farm",SA1,Generator,Market,Non-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",1-23,2,N,-,46,46,
 "Cape Byron Management Pty Ltd","Broadwater Power Station Units 1 and 2",NSW1,Generator,Market,Non-Scheduled,Biomass,Bagasse,Combustion,"Steam - sub critical",2,8,N,-,-,-,
 "Cape Byron Management Pty Ltd","Broadwater Power Station Units 1 and 2",NSW1,Generator,Market,Non-Scheduled,Biomass,Bagasse,Combustion,"Steam - sub critical",1,30,N,BWTR1,38,38,
 "Cape Byron Management Pty Ltd","Condong Power Station Unit 1",NSW1,Generator,Market,Non-Scheduled,Biomass,Bagasse,Combustion,"Steam - sub critical",1,30,N,CONDONG1,30,30,
@@ -167,7 +167,7 @@ Participant,"Station Name",Region,"Dispatch Type",Category,Classification,"Fuel 
 "EnerNOC Pty Ltd","West Illawarra Leagues Club Plant",NSW1,Generator,Market,Non-Scheduled,"Fuel Oil",Diesel,Combustion,"Compression Reciprocating Engine",1,0.715,N,WESTILL1,1,1,
 "EnerNOC Pty Ltd","West Illawarra Leagues Club Plant",NSW1,Generator,Market,Non-Scheduled,"Fuel Oil",Diesel,Combustion,"Compression Reciprocating Engine",2,0.275,N,WESTILL1,-,-,
 "EnerNOC Pty Ltd","Western Suburbs League Club (Campbelltown) Plant",NSW1,Generator,Market,Non-Scheduled,"Fuel Oil",Diesel,Combustion,"Compression Reciprocating Engine",1,1,N,WESTCBT1,1,1,
-"Envirogen (Oaky) Pty Limited","Glennies Creek Power Station ",NSW1,"Generator ",Non-Market,Non-Scheduled,Fossil,"Coal Seam Methane",Combustion,"Compression Reciprocating Engine",1-12,1.08,N,-,13,13,
+"EDL (OCI) Pty Ltd","Glennies Creek Power Station ",NSW1,"Generator ",Non-Market,Non-Scheduled,Fossil,"Waste Coal Mine Gas",Combustion,"Compression Reciprocating Engine",1-12,1.08,N,-,13,13,
 "EnviroGen Pty Limited","Teralba Power Station ",NSW1,Generator,Market,Non-Scheduled,Fossil,"Coal Seam Methane",Combustion,"Compression Reciprocating Engine",1-3,1,N,TERALBA,3,3,
 "Ergon Energy Queensland Pty Ltd","Barcaldine Power Station",QLD1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Combined Cycle Gas Turbine (CCGT)",1,37,N,BARCALDN,37,37,3
 "ERM Power Retail Pty Ltd","Oakey Power Station",QLD1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",1,141,N,OAKEY1,141,171,30
@@ -325,7 +325,7 @@ Participant,"Station Name",Region,"Dispatch Type",Category,Classification,"Fuel 
 "Secure Energy Pty Ltd","Southbank Institute Of Technology Unit 1 Plant",QLD1,Generator,Market,Non-Scheduled,Fossil,Diesel,Combustion,"Compression Reciprocating Engine",1,1,N,STHBKTEC,1,1,
 "Snowtown Wind Farm Pty Ltd","Snowtown Wind Farm Units 1 And 47",SA1,Generator,Market,Semi-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",1-47,2.1,N,SNOWTWN1,99,99,20
 "Snowtown Wind Farm Stage 2 Pty ltd ","Snowtown South Wind Farm",SA1,Generator,Market,Semi-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",1-42,3,N,SNOWSTH1,126,126,50
-"Snowtown Wind Farm Stage 2 Pty ltd ","Snowtown Wind Farm Stage 2 North",SA1,Generator,Market,Semi-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",1-48,3,N,SNOWNTH1,148,144,50
+"Snowtown Wind Farm Stage 2 Pty ltd ","Snowtown Wind Farm Stage 2 North",SA1,Generator,Market,Semi-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",1-48,3,N,SNOWNTH1,144,144,50
 "Snowy Hydro Limited","Blowering Power Station",NSW1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,70,N,BLOWERNG,70,80,10
 "Snowy Hydro Limited","Colongra Power Station",NSW1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",1,181,N,CG1,181,181,34
 "Snowy Hydro Limited","Colongra Power Station",NSW1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",2,181,N,CG2,181,181,34
@@ -335,13 +335,19 @@ Participant,"Station Name",Region,"Dispatch Type",Category,Classification,"Fuel 
 "Snowy Hydro Limited","Guthega Power Station",NSW1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",2,30,Y,GUTHEGA,-,-,
 "Snowy Hydro Limited","Jindabyne Small Hydro Power Station ",NSW1,Generator,Market,Non-Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,1.1,N,JNDABNE1,1.1,1,
 "Snowy Hydro Limited","Jounama Small Hydro Power Station",NSW1,Generator,Market,Non-Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,14,N,JOUNAMA1,14,14,
-"Snowy Hydro Limited","Laverton North Power Station",VIC1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",1-2,156,Y,LAVNORTH,312,346,60
+"Snowy Hydro Limited","Laverton North Power Station",VIC1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",1,156,N,LNGS1,156,172,27
+"Snowy Hydro Limited","Laverton North Power Station",VIC1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",2,156,N,LNGS2,156,172,27
 "Snowy Hydro Limited","Murray 1 Power Station",VIC1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1-10,95,Y,MURRAY,1500,1575,450
 "Snowy Hydro Limited","Murray 2 Power Station",VIC1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1-4,138,Y,MURRAY,-,-,
 "Snowy Hydro Limited","Tumut 1 Power Station",NSW1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1-4,82,Y,UPPTUMUT,616,665,320
 "Snowy Hydro Limited","Tumut 2 Power Station",NSW1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",5-8,72,Y,UPPTUMUT,-,-,
 "Snowy Hydro Limited","Tumut 3 Power Station",NSW1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1-6,250,Y,TUMUT3,1500,1800,600
-"Snowy Hydro Limited","Valley Power Peaking Facility",VIC1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",1-6,50,Y,VPGS,300,390,60
+"Snowy Hydro Limited","Valley Power Peaking Facility",VIC1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",1,50,N,VPGS1,50,60,11
+"Snowy Hydro Limited","Valley Power Peaking Facility",VIC1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",2,50,N,VPGS2,50,60,11
+"Snowy Hydro Limited","Valley Power Peaking Facility",VIC1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",3,50,N,VPGS3,50,60,11
+"Snowy Hydro Limited","Valley Power Peaking Facility",VIC1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",4,50,N,VPGS4,50,60,11
+"Snowy Hydro Limited","Valley Power Peaking Facility",VIC1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",5,50,N,VPGS5,50,60,11
+"Snowy Hydro Limited","Valley Power Peaking Facility",VIC1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",6,50,N,VPGS6,50,60,11
 "Stanwell Corporation Limited","Barron Gorge Power Station",QLD1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Run of River",1,30,N,BARRON-1,30,33,4
 "Stanwell Corporation Limited","Barron Gorge Power Station",QLD1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Run of River",2,30,N,BARRON-2,30,33,4
 "Stanwell Corporation Limited","Kareeya Power Station",QLD1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Run of River",1,21,N,KAREEYA1,21,22,5
