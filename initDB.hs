@@ -41,6 +41,10 @@ import qualified Data.Attoparsec.Text        as A
 
 import qualified Data.Configurator           as C
 
+import System.Environment (getArgs)
+
+import Data.List as L
+
 
 gensAndLoads :: FilePath
 gensAndLoads = "power_station_metadata/nem-Generators and Scheduled Loads.csv"
@@ -62,42 +66,50 @@ main = do
 
             migrateDb
 
+            -- Check if we have any power stations and locations, otherwise initialise them
             numLocs <- runDB $ count ([] :: [Filter DuidLocation])
-            when (numLocs == 0) $ do
-                locs <- liftIO $ do
-                    exists <- doesFileExist stationLocs
-                    unless (exists) $ do
+            numStations <- runDB $ count ([] :: [Filter PowerStation])
+
+            args <- liftIO $ getArgs
+            -- TODO: Use proper option parsing if we're going to do more of this
+            let updateLocs = foldr (\h t -> h == "--update" || t) False args
+                dryRun     = foldr (\h t -> "--dry" `L.isPrefixOf` h || t) False args
+
+            when ((numLocs == 0 && numStations == 0) ||  updateLocs) $ do
+                (locs,ps) <- liftIO $ do
+
+                    -- load station locs
+                    locsExist <- doesFileExist stationLocs
+                    unless (locsExist) $ do
                         putStrLn $ "File does not exist: " ++ stationLocs
                         exitWith $ ExitFailure 1
-                    bs <- B.readFile stationLocs
-                    rows <- either error return $ parseGensAndSchedLoads bs
+                    locCsv <- B.readFile stationLocs
+                    locRows <- either error return $ parseGensAndSchedLoads locCsv
 
-                    print $ V.length rows
-                    V.mapM_ print rows
-                    return rows
+                    print $ V.length locRows
+                    V.mapM_ print locRows
 
-                runDB $ do
+                    -- Load station data
+                    psExist <- doesFileExist gensAndLoads
+                    unless (psExist) $ do
+                        putStrLn $ "File does not exist: " ++ gensAndLoads
+                        exitWith $ ExitFailure 1
+                    stationCsv <- B.readFile gensAndLoads
+                    (_hrs,psRows) <- either error return $ decodeByName stationCsv :: IO ((Header, V.Vector PowerStation))
+                    -- psRows <- either error return $ decode HasHeader bs :: IO (V.Vector (V.Vector ByteString))
+                    print $ V.length psRows
+                    V.mapM_ print psRows
+                    return (locRows,psRows)
+
+                unless dryRun $ runDB $ do
+                    when updateLocs $ do
+                        deleteWhere ([] :: [Filter DuidLocation])
+                        deleteWhere ([] :: [Filter PowerStation])
                     insertMany_ . map (\(duid, (lat, lon), comm) -> DuidLocation duid lat lon comm)
                                 . V.toList
                                 $ locs
-            return ()
+                    insertMany_ . V.toList $ ps
 
-                        -- Check if we have any power stations, otherwise initialise them
-            numStations <- runDB $ count ([] :: [Filter PowerStation])
-            when (numStations == 0) $ do
-                ps <- liftIO $ do
-                    exists <- doesFileExist gensAndLoads
-                    unless (exists) $ do
-                        putStrLn $ "File does not exist: " ++ gensAndLoads
-                        exitWith $ ExitFailure 1
-                    bs <- B.readFile gensAndLoads
-                    (_hrs,rows) <- either error return $ decodeByName bs :: IO ((Header, V.Vector PowerStation))
-                    -- rows <- either error return $ decode HasHeader bs :: IO (V.Vector (V.Vector ByteString))
-                    print $ V.length rows
-                    V.mapM_ print rows
-                    return rows
-
-                runDB . insertMany_ . V.toList $ ps
             return ()
 
 
