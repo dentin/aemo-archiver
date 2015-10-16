@@ -1,4 +1,7 @@
-### 0.8.0.0, 2015-25-09
+### 0.8.0.1, 2015-10-16
+* Update to the power station metadata.
+
+### 0.8.0.0, 2015-09-25
 * Create a "materialized view" of the most recent time a DUID has been seen.
 
 ### 0.7.0.1, 2015-09-22
