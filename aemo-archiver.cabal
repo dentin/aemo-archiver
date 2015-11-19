@@ -25,11 +25,11 @@ license:             BSD3
 license-file:        LICENSE
 
 -- The package author(s).
-author:              Alexander Mason
+author:              Alex Mason
 
 -- An email address to which users can send suggestions, bug reports, and
 -- patches.
-maintainer:          Alexander.Mason@nicta.com.au
+maintainer:          Alex.Mason@nicta.com.au
 
 -- A copyright notice.
 -- copyright:
