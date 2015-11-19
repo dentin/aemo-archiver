@@ -12,10 +12,6 @@ import qualified Data.Text                    as T
 -- import           Control.Monad.Logger         (NoLoggingT)
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Resource (ResourceT, runResourceT)
-import Control.Monad.Reader (runReaderT)
-
-import Data.Pool (withResource)
-
 
 #if MIN_VERSION_time(1,5,0)
 import           Data.Time                    (ZonedTime, zonedTimeToUTC)
@@ -37,8 +33,6 @@ import           Database.Persist.Postgresql
 #if !MIN_VERSION_base(4,8,0)
 import Data.Functor
 #endif
-
-import Data.String.Here
 
 type CSVRow = ((), (), (), (), String, String, Double)
 -- type DBMonad a = SqlPersistT (NoLoggingT (ResourceT IO)) a

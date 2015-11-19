@@ -76,8 +76,6 @@ library
                         , mtl                   >= 2.1      && < 2.3
                         , fast-logger
                         , transformers-base     >= 0.4      && < 0.5
-                        , resource-pool
-                        , here
                         , containers
 
 
@@ -125,8 +123,6 @@ executable aemo-archiver
                         , fast-logger
                         , transformers-base     >= 0.4      && < 0.5
                         , configurator          >= 0.3      && < 1.0
-                        , resource-pool
-                        , here
                         , containers
 
 
@@ -178,8 +174,6 @@ executable initDB
                         , transformers-base     >= 0.4      && < 0.5
                         , attoparsec            >= 0.10     && < 1.0
                         , configurator          >= 0.3      && < 1.0
-                        , resource-pool
-                        , here
                         , containers
 
 
