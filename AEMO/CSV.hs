@@ -8,15 +8,23 @@ import           Data.ByteString.Lazy        (ByteString)
 import           Data.Vector                 (Vector)
 import qualified Data.Vector                 as V
 
+import           Data.Map.Strict             (Map)
+import qualified Data.Map.Strict             as M
+
+
 import           Control.Monad               (filterM, unless, void, when)
 import qualified Data.ByteString.Lazy.Char8  as C (intercalate, lines)
 import           Data.Csv                    (HasHeader (..), decode)
 import           Data.Either                 (partitionEithers)
--- import           Data.Text                   (Text)
+import           Data.List                   (sort)
+
+import           Data.Text                   (Text)
 import qualified Data.Text                   as T (pack)
 -- import           Data.List.Split              (chunksOf)
 
+
 import           Data.Char                   (toLower)
+import           Data.Function               (on)
 import           Data.List                   (isSuffixOf)
 
 import           Control.Monad.IO.Class      (liftIO)
@@ -61,19 +69,25 @@ retrieve depth zipLinks = do
     $(logInfo) $ T.pack ("Files fetched: " ++ show (length rslts))
 
     $(logInfo) "Processing data:"
-    mapM_ (proc depth) rslts
+
+    case reverse (sort rslts) of
+        [] -> pure ()
+        (latest:srslts) -> do
+            mapM_ (proc False depth) srslts
+            proc True depth latest
+
     $(logInfo) "Done processing data"
     return (length unseen)
 
 
-proc :: Int -> (FileName,ByteString) -> AppM ()
-proc depth pair = case toZipTree depth pair of
+proc :: Bool -> Int -> (FileName,ByteString) -> AppM ()
+proc updateLatest depth pair = case toZipTree depth pair of
     Left str -> $(logError) $ T.pack $ "Failed to extract data from fip file: " ++ fst pair ++ "\"" ++ str ++ "\""
-    Right zt -> runDB $ insertZipTree zt
+    Right zt -> runDB $ insertZipTree updateLatest zt
 
 
-insertZipTree :: ZipTree ByteString -> DBMonad ()
-insertZipTree = void . travseseWithParentAndName
+insertZipTree :: Bool -> ZipTree ByteString -> DBMonad ()
+insertZipTree updateLatest = void . travseseWithParentAndName
     (\fp -> insert (AemoZipFile (T.pack fp)) >> return fp)
     (\fp -> do
         let msg = "found zip file when only files were expected: " ++ fp
@@ -90,6 +104,7 @@ insertZipTree = void . travseseWithParentAndName
                     let (errs,psdata) = partitionEithers . map (csvTupleToPowerStationDatum fid) . V.toList $ vec
                     case errs of
                         [] -> do
+                            when updateLatest $ updateLatestDuidTimes psdata
                             insertMany_  psdata
                             $(logInfo) $ T.pack $ "Inserted data from " ++ show parent
                         _  -> do
@@ -99,6 +114,28 @@ insertZipTree = void . travseseWithParentAndName
         )
 
 
+updateLatestDuidTimes :: [PowerStationDatum] -> DBMonad ()
+updateLatestDuidTimes psdata = do
+    latests <- selectList [] [Asc LatestDuidDatumDuid]
+    let latestMap :: Map Text LatestDuidDatum
+        latestMap = M.fromAscList
+                    . map (\e -> (latestDuidDatumDuid . entityVal $ e, entityVal e))
+                    $ latests
+
+        updates :: Map Text LatestDuidDatum
+        updates = M.fromList
+                  . map (\d -> (powerStationDatumDuid d
+                                , LatestDuidDatum (powerStationDatumDuid d)
+                                                  (powerStationDatumSampleTime d))
+                         )
+                  $ psdata
+
+        updated = M.unionWithKey (\duid ldda lddb
+                                -> LatestDuidDatum duid (on max latestDuidDatumSampleTime ldda lddb))
+                                latestMap
+                                updates
+    _ <- traverse (\ldd -> upsert ldd []) updated
+    pure ()
 
 -- | Parse the AEMO CSV files which contain daily data
 parseAEMO :: ByteString -> Either String (Vector CSVRow)

@@ -64,16 +64,16 @@ main = do
         withPostgresqlPool connStr conns $ \conn -> do
             connPool ?= conn
 
-            migrateDb
-
-            -- Check if we have any power stations and locations, otherwise initialise them
-            numLocs <- runDB $ count ([] :: [Filter DuidLocation])
-            numStations <- runDB $ count ([] :: [Filter PowerStation])
-
             args <- liftIO $ getArgs
             -- TODO: Use proper option parsing if we're going to do more of this
             let updateLocs = foldr (\h t -> h == "--update" || t) False args
                 dryRun     = foldr (\h t -> "--dry" `L.isPrefixOf` h || t) False args
+
+            unless dryRun migrateDb
+
+            -- Check if we have any power stations and locations, otherwise initialise them
+            numLocs <- runDB $ count ([] :: [Filter DuidLocation])
+            numStations <- runDB $ count ([] :: [Filter PowerStation])
 
             when ((numLocs == 0 && numStations == 0) ||  updateLocs) $ do
                 (locs,ps) <- liftIO $ do
@@ -113,10 +113,9 @@ main = do
             return ()
 
 
-            arcs   <- fetchArchiveActualLoad
-            dailys <- fetchDaily5mActualLoad
-            when (arcs + dailys > 0)
-                refreshLatestDUIDTime
+            _ <- fetchArchiveActualLoad
+            _ <- fetchDaily5mActualLoad
+            pure ()
 
 
 parseGensAndSchedLoads :: ByteString -> Either String (V.Vector (Text, (Double, Double), Text))
