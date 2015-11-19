@@ -160,6 +160,13 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
         comment Text
         UniqueDuidLocation duid
         deriving Show
+
+    LatestDuidDatum sql=latest_power_station_datum
+        duid        Text        id=duid
+        sampleTime  UTCTime     id=sample_time
+        UniqueLatestDuidTime duid
+        deriving Show
+
     |]
 
 
