@@ -49,21 +49,6 @@ migrateDb :: AppM ()
 migrateDb = do
     runDB $ runMigration migrateAll
 
-    Just conn <- use connPool
-    withResource conn $ \sqlbknd -> do
-        liftIO $ flip runReaderT sqlbknd $
-            rawExecute [here|
-                        BEGIN;
-                           DROP MATERIALIZED VIEW IF EXISTS latest_power_station_datum;
-                           CREATE MATERIALIZED VIEW latest_power_station_datum
-                           AS
-                               SELECT duid, MAX(sample_time) AS sample_time
-                               FROM power_station_datum
-                               GROUP BY duid
-                               WITH NO DATA;
-                        COMMIT;
-                        |]
-                       []
 
 
 csvNotInDb :: FileName -> DBMonad Bool
@@ -82,14 +67,6 @@ runDB act = do
         -- Just conn -> liftIO $ runSqlPersistMPool act conn
         Just conn -> liftIO $ runResourceT $ flip runLoggingT lggr $ runSqlPool act conn
         Nothing -> error "runDB: no database connection found!"
-
-
-refreshLatestDUIDTime :: AppM ()
-refreshLatestDUIDTime = do
-    Just conn <- use connPool
-    withResource conn $ \sqlbknd -> do
-        liftIO $ flip runReaderT sqlbknd $
-            rawExecute "REFRESH MATERIALIZED VIEW latest_power_station_datum" []
 
 
 -- | Takes a tuple parsed from the AEMO CSV data and produces a PowerStationDatum. Time of recording is
