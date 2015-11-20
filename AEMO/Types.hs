@@ -161,6 +161,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
         UniqueDuidLocation duid
         deriving Show
 
+    -- Also update AEMO.Database if this is changed.
     LatestDuidDatum sql=latest_power_station_datum
         duid        Text        id=duid
         sampleTime  UTCTime     id=sample_time

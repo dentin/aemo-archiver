@@ -12,6 +12,10 @@ import qualified Data.Text                    as T
 -- import           Control.Monad.Logger         (NoLoggingT)
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Resource (ResourceT, runResourceT)
+import           Control.Monad.Reader (runReaderT)
+
+import           Data.Pool (withResource)
+
 
 #if MIN_VERSION_time(1,5,0)
 import           Data.Time                    (ZonedTime, zonedTimeToUTC)
@@ -30,6 +34,9 @@ import           Control.Monad.Logger
 
 import           Database.Persist.Postgresql
 
+import Data.String.Here
+
+
 #if !MIN_VERSION_base(4,8,0)
 import Data.Functor
 #endif
@@ -42,6 +49,22 @@ type DBMonad a = SqlPersistT (LoggingT (ResourceT IO)) a
 migrateDb :: AppM ()
 migrateDb = do
     runDB $ runMigration migrateAll
+
+    Just conn <- use connPool
+    withResource conn $ \sqlbknd -> do
+        liftIO $ flip runReaderT sqlbknd $
+            rawExecute [here|
+                        BEGIN;
+                           DELETE FROM latest_power_station_datum;
+                           INSERT INTO latest_power_station_datum(duid,sample_time)
+                                (SELECT ps.duid AS duid, max(sample_time) AS sample_time
+                                FROM (SELECT DISTINCT duid FROM power_station) AS ps, power_station_datum AS psd
+                                WHERE psd.duid = ps.duid
+                                GROUP BY ps.duid);
+                        COMMIT;
+                        |]
+                       []
+
 
 
 

@@ -77,6 +77,8 @@ library
                         , fast-logger
                         , transformers-base     >= 0.4      && < 0.5
                         , containers
+                        , resource-pool
+                        , here
 
 
   -- Base language which the package is written in.
@@ -124,6 +126,8 @@ executable aemo-archiver
                         , transformers-base     >= 0.4      && < 0.5
                         , configurator          >= 0.3      && < 1.0
                         , containers
+                        , resource-pool
+                        , here
 
 
   -- Directories containing source files.
@@ -175,6 +179,10 @@ executable initDB
                         , attoparsec            >= 0.10     && < 1.0
                         , configurator          >= 0.3      && < 1.0
                         , containers
+                        , resource-pool
+                        , here
+
+
 
 
   -- Directories containing source files.
