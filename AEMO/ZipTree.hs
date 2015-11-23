@@ -1,14 +1,16 @@
 {-# LANGUAGE DeriveFoldable    #-}
 {-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE CPP               #-}
 
 module AEMO.ZipTree where
 
-
+#if !MIN_VERSION_base(4,8,0)
 import           Control.Applicative
-import           Control.Monad
 import           Data.Foldable        hiding (concat, concatMap, elem)
 import           Data.Traversable     hiding (mapM)
+#endif
+import           Control.Monad
 
 import           Data.ByteString.Lazy (ByteString)
 
