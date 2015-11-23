@@ -5,23 +5,24 @@ module AEMO.CSV where
 
 import           Data.ByteString.Lazy        (ByteString)
 -- import qualified Data.ByteString.Lazy        as B
+
 import           Data.Vector                 (Vector)
 import qualified Data.Vector                 as V
 
 import           Data.Map.Strict             (Map)
 import qualified Data.Map.Strict             as M
 
+import           Data.Text                   (Text)
+import qualified Data.Text                   as T (pack)
+
 
 import           Control.Monad               (filterM, unless, void, when)
 import qualified Data.ByteString.Lazy.Char8  as C (intercalate, lines)
 import           Data.Csv                    (HasHeader (..), decode)
 import           Data.Either                 (partitionEithers)
-import           Data.List                   (sort)
+import           Data.IORef
 
-import           Data.Text                   (Text)
-import qualified Data.Text                   as T (pack)
--- import           Data.List.Split              (chunksOf)
-
+import           Control.Arrow               ((&&&))
 
 import           Data.Char                   (toLower)
 import           Data.Function               (on)
@@ -68,61 +69,62 @@ retrieve depth zipLinks = do
         mapM_ ($(logInfo) . T.pack . show) ferrs
     $(logInfo) $ T.pack ("Files fetched: " ++ show (length rslts))
 
+    latests <- runDB $ selectList [] [Asc LatestDuidDatumDuid]
+
+    let latestMap :: Map Text LatestDuidDatum
+        latestMap = M.fromAscList
+                    . map ((latestDuidDatumDuid &&& id) . entityVal)
+                    $ latests
+
+    ref <- liftIO $ newIORef latestMap
+
     $(logInfo) "Processing data:"
+    mapM_ (proc ref depth) rslts
 
-    case reverse (sort rslts) of
-        [] -> pure ()
-        (latest:srslts) -> do
-            mapM_ (proc False depth) srslts
-            proc True depth latest
-
+    $(logInfo) "Updating latest times table"
+    newTimes <- liftIO $ readIORef ref
+    _ <- runDB $ traverse (\ldd -> upsert ldd []) newTimes
     $(logInfo) "Done processing data"
     return (length unseen)
 
+type TimeRef = IORef (Map Text LatestDuidDatum)
 
-proc :: Bool -> Int -> (FileName,ByteString) -> AppM ()
-proc updateLatest depth pair = case toZipTree depth pair of
+proc :: TimeRef -> Int -> (FileName,ByteString) -> AppM ()
+proc ref depth pair = case toZipTree depth pair of
     Left str -> $(logError) $ T.pack $ "Failed to extract data from fip file: " ++ fst pair ++ "\"" ++ str ++ "\""
-    Right zt -> runDB $ insertZipTree updateLatest zt
+    Right zt -> runDB $ insertZipTree ref zt
 
 
-insertZipTree :: Bool -> ZipTree ByteString -> DBMonad ()
-insertZipTree updateLatest = void . travseseWithParentAndName
+insertZipTree :: TimeRef -> ZipTree ByteString -> DBMonad ()
+insertZipTree ref = void . travseseWithParentAndName
     (\fp -> insert (AemoZipFile (T.pack fp)) >> return fp)
     (\fp -> do
         let msg = "found zip file when only files were expected: " ++ fp
         $(logError) $ T.pack $ msg
         fail msg
     )
-    (\parent name bs -> do
-        when (isSuffixOf ".csv" . map toLower $ name) $ do
-            unknownCsv <- csvNotInDb name
-            when unknownCsv $ case parseAEMO bs of
-                Left str -> fail str
-                Right vec -> do
-                    fid <- insert $ AemoCsvFile (T.pack name) (V.length vec)
-                    let (errs,psdata) = partitionEithers . map (csvTupleToPowerStationDatum fid) . V.toList $ vec
-                    case errs of
-                        [] -> do
-                            when updateLatest $ updateLatestDuidTimes psdata
-                            insertMany_  psdata
-                            $(logInfo) $ T.pack $ "Inserted data from " ++ show parent
-                        _  -> do
-                            $(logError) "Failed to parse CSV"
-                            mapM_ ($(logError) . T.pack . show) errs
-                            fail "Failed to parse CSVs"
+    (\parent name bs -> when (isSuffixOf ".csv" . map toLower $ name) $ do
+        unknownCsv <- csvNotInDb name
+        when unknownCsv $ case parseAEMO bs of
+            Left str -> fail str
+            Right vec -> do
+                fid <- insert $ AemoCsvFile (T.pack name) (V.length vec)
+                let (errs,psdata) = partitionEithers . map (csvTupleToPowerStationDatum fid) . V.toList $ vec
+                case errs of
+                    [] -> do
+                        updateLatestDuidTimes ref psdata
+                        insertMany_  psdata
+                        $(logInfo) $ T.pack $ "Inserted data from " ++ show parent
+                    _  -> do
+                        $(logError) "Failed to parse CSV"
+                        mapM_ ($(logError) . T.pack . show) errs
+                        fail "Failed to parse CSVs"
         )
 
 
-updateLatestDuidTimes :: [PowerStationDatum] -> DBMonad ()
-updateLatestDuidTimes psdata = do
-    latests <- selectList [] [Asc LatestDuidDatumDuid]
-    let latestMap :: Map Text LatestDuidDatum
-        latestMap = M.fromAscList
-                    . map (\e -> (latestDuidDatumDuid . entityVal $ e, entityVal e))
-                    $ latests
-
-        updates :: Map Text LatestDuidDatum
+updateLatestDuidTimes :: TimeRef -> [PowerStationDatum] -> DBMonad ()
+updateLatestDuidTimes ref psdata = liftIO $ do
+    let updates :: Map Text LatestDuidDatum
         updates = M.fromList
                   . map (\d -> (powerStationDatumDuid d
                                 , LatestDuidDatum (powerStationDatumDuid d)
@@ -130,12 +132,10 @@ updateLatestDuidTimes psdata = do
                          )
                   $ psdata
 
-        updated = M.unionWithKey (\duid ldda lddb
-                                -> LatestDuidDatum duid (on max latestDuidDatumSampleTime ldda lddb))
-                                latestMap
-                                updates
-    _ <- traverse (\ldd -> upsert ldd []) updated
-    pure ()
+    modifyIORef' ref $
+        M.unionWithKey (\duid ldda lddb -> LatestDuidDatum duid $! (on max latestDuidDatumSampleTime ldda lddb))
+                       updates
+
 
 -- | Parse the AEMO CSV files which contain daily data
 parseAEMO :: ByteString -> Either String (Vector CSVRow)
