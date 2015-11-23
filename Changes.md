@@ -1,3 +1,7 @@
+### 0.8.1.0, 2015-11-23
+* Change materialised view to be a manually updated table named `latest_power_station_datum`.
+* Add the tool `sync-latest` to update the `latest_power_station_datum`.
+
 ### 0.8.0.1, 2015-10-16
 * Update to the power station metadata.
 

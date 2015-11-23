@@ -18,9 +18,11 @@ stack build
 
 mkdir -p target
 tar czf target/aemo-archiver-${DESCRIBE}.tar.gz \
+  Changes.md \
   createdb \
   registrations \
   power_station_metadata \
   -C ${INSTALL_PATH} \
     aemo-archiver \
-    initDB
+    initDB \
+    sync-latest
