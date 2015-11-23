@@ -1,3 +1,6 @@
+### 0.8.1.1, 2015-11-23
+* Fix `make_package` to include the `sync-latest` tool properly.
+
 ### 0.8.1.0, 2015-11-23
 * Change materialised view to be a manually updated table named `latest_power_station_datum`.
 * Add the tool `sync-latest` to update the `latest_power_station_datum`.

@@ -4,3 +4,4 @@ packages:
 extra-deps:
 - time-units-1.0.0
 resolver: lts-3.14
+local-bin-path: dist
