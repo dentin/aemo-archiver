@@ -49,7 +49,11 @@ type DBMonad a = SqlPersistT (LoggingT (ResourceT IO)) a
 migrateDb :: AppM ()
 migrateDb = do
     runDB $ runMigration migrateAll
+    updateLatestTimesSlow
 
+
+updateLatestTimesSlow :: AppM ()
+updateLatestTimesSlow = do
     Just conn <- use connPool
     withResource conn $ \sqlbknd -> do
         liftIO $ flip runReaderT sqlbknd $
