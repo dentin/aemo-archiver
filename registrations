@@ -27,7 +27,7 @@ BASE_URL='http://www.aemo.com.au/About-the-Industry/Registration/Current-Registr
 EXCEL_FILE_NAME="${PSDIR}/Registration_and_Exemption_List.xls"
 # Grab the URL of the file out of the HTML, convert spaces to %20
 echo "Finding the URL of the AEMO Registration_and_Exemption_List"
-FILE_PART_URL=$(curl --silent "${BASE_URL}" | perl -ne '/a href="(.+)">Registration and Exemption List</ && print $1' | perl -pe 's/ /%20/g')
+FILE_PART_URL=$(curl --silent "${BASE_URL}" | perl -ne '/a href="(.+)">NEM Registration and Exemption List</ && print $1' | perl -pe 's/ /%20/g')
 
 echo "Getting the actual list"
 curl --silent -o "${EXCEL_FILE_NAME}" "${BASE_URL}/${FILE_PART_URL}"
