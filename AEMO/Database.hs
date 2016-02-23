@@ -43,7 +43,7 @@ import Data.Functor
 
 type CSVRow = ((), (), (), (), String, String, Double)
 -- type DBMonad a = SqlPersistT (NoLoggingT (ResourceT IO)) a
-type DBMonad a = SqlPersistT (LoggingT (ResourceT IO)) a
+type DBMonad = SqlPersistT (LoggingT (ResourceT IO))
 
 
 migrateDb :: AppM ()
