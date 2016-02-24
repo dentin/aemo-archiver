@@ -1,3 +1,6 @@
+### 0.8.2.0, 2016-02-24
+* Updated the AEMO power station metadata.
+
 ### 0.8.1.1, 2015-11-23
 * Fix `make_package` to include the `sync-latest` tool properly.
 
