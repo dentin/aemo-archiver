@@ -38,7 +38,7 @@ ssconvert --export-file-per-sheet "${EXCEL_FILE_NAME}" "${PSDIR}/nem-%s.csv"
 AEMO_GENS_LOADS='nem-Generators and Scheduled Loads.csv'
 
 
-# The Geoscience Australia ASEIS list of power stations as a WFS service
+# The Geoscience Australia list of power stations as a WFS service
 GA_PS_URL='http://services.ga.gov.au/gis/services/Electricity_Infrastructure/MapServer/WFSServer?service=WFS&request=GetFeature&typeName=Electricity_Infrastructure:National_Major_Power_Stations&srsName=EPSG:4326&maxFeatures=100000'
 # Save the WFS data in here
 GA_PS_FILE="${PSDIR}/GA_power_stations.gml"
