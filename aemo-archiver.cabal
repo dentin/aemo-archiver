@@ -197,6 +197,7 @@ executable initDB
                  , AEMO.Types
                  , AEMO.WebScraper
                  , AEMO.ZipTree
+                 , PkgInfo_initDB
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
 
@@ -227,11 +228,11 @@ executable initDB
                         , fast-logger
                         , transformers-base     >= 0.4      && < 0.5
                         , attoparsec            >= 0.10     && < 1.0
-                        , configurator          >= 0.3      && < 1.0
                         , containers
                         , resource-pool
                         , here
                         , scientific
+                        , configuration-tools   >= 0.2.14  && < 0.3
 
 
 

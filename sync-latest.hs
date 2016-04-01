@@ -14,14 +14,22 @@ import           Control.Lens
 
 import           Control.Monad.Logger        (LogLevel (..), logInfo)
 
-import qualified Data.Configurator           as C
+import           System.IO                   (BufferMode (NoBuffering),
+                                              hSetBuffering, stdout)
+                                              
+import qualified Data.ByteString.Char8       as C8
 
+import Configuration.Utils hiding (decode)
+import PkgInfo_sync_latest
+
+mainInfo :: ProgramInfo AEMOConf
+mainInfo = programInfo "sync-latest" pAEMOConf defaultAemoConfig
 
 main :: IO ()
-main = do
-    (conf,_tid) <- C.autoReload C.autoConfig ["/etc/aremi/aemo.conf"]
-    connStr <- C.require conf "db-conn-string"
-    conns <- C.lookupDefault 10 conf "db-connections"
+main = runWithPkgInfoConfiguration mainInfo pkgInfo $ \conf -> do
+    hSetBuffering stdout NoBuffering
+    let conns   = _aemoDBCons conf
+        connStr = C8.pack $ _aemoDBString conf
 
     execAppM (AS Nothing makeLog LevelInfo) $ do
         withPostgresqlPool connStr conns $ \conn -> do
@@ -29,5 +37,3 @@ main = do
             $(logInfo) "Running full update of latest_power_station_datum"
             updateLatestTimesSlow
             $(logInfo) "Completed update."
-
-
