@@ -36,14 +36,14 @@ maintainer:          Alex.Mason@nicta.com.au
 
 -- category:
 
-build-type:          Simple
+build-type:          Custom
 
 -- Extra files to be distributed with the package, such as examples or a
 -- README.
 -- extra-source-files:
 
 -- Constraint on the version of Cabal needed to build this package.
-cabal-version:       >=1.20
+cabal-version:       >=1.22
 
 
 library
@@ -79,6 +79,7 @@ library
                         , containers
                         , resource-pool
                         , here
+                        , configuration-tools   >= 0.2.14  && < 0.3
 
 
   -- Base language which the package is written in.
