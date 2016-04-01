@@ -97,6 +97,7 @@ executable aemo-archiver
                  , AEMO.Types
                  , AEMO.WebScraper
                  , AEMO.ZipTree
+                 , PkgInfo_aemo_archiver
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
@@ -126,10 +127,10 @@ executable aemo-archiver
                         , mtl                   >= 2.1      && < 2.3
                         , fast-logger
                         , transformers-base     >= 0.4      && < 0.5
-                        , configurator          >= 0.3      && < 1.0
                         , containers
                         , resource-pool
                         , here
+                        , configuration-tools   >= 0.2.14  && < 0.3
 
 
 
