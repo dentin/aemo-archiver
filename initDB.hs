@@ -7,6 +7,7 @@ module Main where
 import           Data.ByteString.Lazy        (ByteString)
 import qualified Data.ByteString.Lazy        as B
 import qualified Data.ByteString.Lazy.Char8  as B8
+import qualified Data.ByteString.Char8       as C8
 import qualified Data.Vector                 as V
 
 import           Data.Text                   (Text, pack, unpack)
@@ -43,44 +44,30 @@ import           Control.Applicative
 
 import qualified Data.Attoparsec.Text        as A
 
-import qualified Data.Configurator           as C
-
-import           System.Environment          (getArgs)
-
-import           Data.List                   as L
-
 import           Text.Read
 
 import           Data.Function               (on)
 
 import           Data.Scientific
 
-gensAndLoads :: FilePath
-gensAndLoads = "power_station_metadata/nem-Generators and Scheduled Loads.csv"
+import Configuration.Utils hiding (decode)
+import PkgInfo_initDB
 
-stationLocs :: FilePath
-stationLocs = "power_station_metadata/power_station_locations.csv"
-
-
--- | Main accepts two flags:
---  * --dry     Will perform no updates to any tabvle (but will read files and connect to the DB)
---  * --update  Update the list of participants
+mainInfo :: ProgramInfo AEMOConf
+mainInfo = programInfo "initDB" pAEMOConf defaultAemoConfig
 
 main :: IO ()
-main = do
+main = runWithPkgInfoConfiguration mainInfo pkgInfo $ \conf -> do
     hSetBuffering stdout NoBuffering
-    (conf,_tid) <- C.autoReload C.autoConfig ["/etc/aremi/aemo.conf"]
-    connStr <- C.require conf "db-conn-string"
-    conns <- C.lookupDefault 10 conf "db-connections"
+    let conns   = _aemoDBCons conf
+        connStr = C8.pack $ _aemoDBString conf
 
     execAppM (AS Nothing makeLog LevelInfo) $ do
         withPostgresqlPool connStr conns $ \conn -> do
             connPool ?= conn
 
-            args <- liftIO $ getArgs
-            -- TODO: Use proper option parsing if we're going to do more of this
-            let updateLocs = foldr (\h t -> h == "--update" || t) False args
-                dryRun     = foldr (\h t -> "--dry" `L.isPrefixOf` h || t) False args
+            let updateLocs = _aemoUpdateStations conf
+                dryRun     = _aemoDryRun conf
 
             unless dryRun migrateDb
 
@@ -92,6 +79,7 @@ main = do
                 (locs,ps) <- liftIO $ do
 
                     -- load station locs
+                    let stationLocs = _aemoStationLocs conf
                     locsExist <- doesFileExist stationLocs
                     unless (locsExist) $ do
                         putStrLn $ "File does not exist: " ++ stationLocs
@@ -103,6 +91,7 @@ main = do
                     -- V.mapM_ print locRows
 
                     -- Load station data
+                    let gensAndLoads = _aemoGensAndLoads conf
                     psExist <- doesFileExist gensAndLoads
                     unless (psExist) $ do
                         putStrLn $ "File does not exist: " ++ gensAndLoads
