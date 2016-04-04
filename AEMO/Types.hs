@@ -54,11 +54,41 @@ import           Data.Time.Format               (formatTime)
 import           System.Locale                  (defaultTimeLocale)
 #endif
 
-import           Configuration.Utils
+import           Configuration.Utils hiding ((.=))
+import qualified Configuration.Utils as U
+
+data DBConf = DBConf
+  {_dbConnString :: String
+  ,_dbConnections :: Int
+  }
+$(makeLenses ''DBConf)
+
+defaultDBConf :: DBConf
+defaultDBConf = DBConf
+  {_dbConnString = ""
+  ,_dbConnections = 2
+  }
+
+instance FromJSON (DBConf -> DBConf) where
+  parseJSON = withObject "DBConf" $ \o -> id
+    <$< dbConnString  ..: "dbConnString" % o
+    <*< dbConnections ..: "dbConnections" % o
+
+instance ToJSON DBConf where
+  toJSON a = object
+    ["dbConnString"  U..= _dbConnString  a
+    ,"dbConnections" U..= _dbConnections a
+    ]
+
+pDBConf :: MParser DBConf
+pDBConf = id
+  <$< dbConnString  .:: strOption    % short 'd' <> long "db-conn-string" <> metavar "CONNSTR"
+      <> help "PostgreSQL connection string"
+  <*< dbConnections .:: option auto  % short 'n' <> long "db-connections" <> metavar "INT"
+      <> help "Number of database connections (minimum 2)"
 
 data AEMOConf = AEMOConf
-  { _aemoDBCons         :: Int
-  , _aemoDBString       :: String
+  { _aemoDB             :: DBConf
   , _aemoGensAndLoads   :: FilePath
   , _aemoStationLocs    :: FilePath
   , _aemoDryRun         :: Bool
@@ -68,8 +98,7 @@ $(makeLenses ''AEMOConf)
 
 defaultAemoConfig :: AEMOConf
 defaultAemoConfig = AEMOConf
-  {_aemoDBCons         = 10
-  ,_aemoDBString       = ""
+  {_aemoDB             = defaultDBConf
   ,_aemoGensAndLoads   = "power_station_metadata/nem-Generators and Scheduled Loads.csv"
   ,_aemoStationLocs    = "power_station_metadata/power_station_locations.csv"
   ,_aemoDryRun         = True
@@ -78,8 +107,7 @@ defaultAemoConfig = AEMOConf
 
 instance FromJSON (AEMOConf -> AEMOConf) where
   parseJSON = withObject "AEMOConf" $ \o -> id
-    <$< aemoDBCons         ..: "db-connections"  % o
-    <*< aemoDBString       ..: "db-conn-string"  % o
+    <$< aemoDB             %.: "aemoDB"          % o
     <*< aemoGensAndLoads   ..: "generators-csv"  % o
     <*< aemoStationLocs    ..: "stations-csv"    % o
     <*< aemoDryRun         ..: "dry-run"         % o
@@ -87,20 +115,16 @@ instance FromJSON (AEMOConf -> AEMOConf) where
 
 instance ToJSON AEMOConf where
   toJSON a = object
-    ["db-connections"  .= _aemoDBCons a
-    ,"db-conn-string"  .= _aemoDBString a
-    ,"generators-csv"  .= _aemoGensAndLoads a
-    ,"stations-csv"    .= _aemoStationLocs a
-    ,"dry-run"         .= _aemoDryRun a
-    ,"update-stations" .= _aemoUpdateStations a
+    ["aemoDB"             U..= _aemoDB a
+    ,"aemoGensAndLoads"   U..= _aemoGensAndLoads a
+    ,"aemoStationLocs"    U..= _aemoStationLocs a
+    ,"aemoDryRun"         U..= _aemoDryRun a
+    ,"aemoUpdateStations" U..= _aemoUpdateStations a
     ]
 
 pAEMOConf :: MParser AEMOConf
 pAEMOConf = id
-  <$< aemoDBCons         .:: option auto  % short 'n' <> long "db-connections" <> metavar "INT"
-    <> help "Number of database connections"
-  <*< aemoDBString       .:: strOption    % short 'c' <> long "db-conn-string" <> metavar "CONNSTR"
-    <> help "PostgreSQL connection string"
+  <$< aemoDB             %:: pDBConf
   <*< aemoGensAndLoads   .:: strOption    % short 'g' <> long "generators-csv" <> metavar "CSV" <> action "file"
     <> help "path to Generation and Loads CSV file"
   <*< aemoStationLocs    .:: strOption    % short 's' <> long "stations-csv"   <> metavar "CSV" <> action "file"

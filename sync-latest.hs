@@ -16,11 +16,11 @@ import           Control.Monad.Logger        (LogLevel (..), logInfo)
 
 import           System.IO                   (BufferMode (NoBuffering),
                                               hSetBuffering, stdout)
-                                              
+
 import qualified Data.ByteString.Char8       as C8
 
-import Configuration.Utils hiding (decode)
-import PkgInfo_sync_latest
+import           Configuration.Utils         hiding (decode)
+import           PkgInfo_sync_latest
 
 mainInfo :: ProgramInfo AEMOConf
 mainInfo = programInfo "sync-latest" pAEMOConf defaultAemoConfig
@@ -28,8 +28,8 @@ mainInfo = programInfo "sync-latest" pAEMOConf defaultAemoConfig
 main :: IO ()
 main = runWithPkgInfoConfiguration mainInfo pkgInfo $ \conf -> do
     hSetBuffering stdout NoBuffering
-    let conns   = _aemoDBCons conf
-        connStr = C8.pack $ _aemoDBString conf
+    let conns   = conf ^. aemoDB . dbConnections
+        connStr = C8.pack $ conf ^. aemoDB . dbConnString
 
     execAppM (AS Nothing makeLog LevelInfo) $ do
         withPostgresqlPool connStr conns $ \conn -> do
