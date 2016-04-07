@@ -1,3 +1,6 @@
+### 0.10.1.0
+- Use new configuration format, see config/aemo-archiver.yaml and the `--help` flag in executables
+
 ### 0.8.2.0, 2016-02-24
 * Updated the AEMO power station metadata.
 
