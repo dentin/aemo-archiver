@@ -131,6 +131,8 @@ Participant,"Station Name",Region,"Dispatch Type",Category,Classification,"Fuel 
 "EDL LFG (Vic) Pty Ltd","Claytons Landfill Gas Power Station",VIC1,Generator,Market,Non-Scheduled,Renewable,"Landfill Gas",Combustion,"Spark Ignition",1-11,1,N,CLAYTON,11,11,
 "EDL LFG (VIC) Pty Ltd","Corio Landfill Gas Power Station",VIC1,Generator,Market,Non-Scheduled,"Renewable/ Biomass / Waste","Landfill Methane / Landfill Gas",Combustion,"Spark Ignition Reciprocating Engine",1,1,N,CORIO1,1,1,0
 "EDL LFG (VIC) Pty Ltd","Springvale Landfill Gas Power Station",VIC1,Generator,Market,Non-Scheduled,"Renewable/ Biomass / Waste","Landfill Methane / Landfill Gas",Combustion,"Spark Ignition Reciprocating Engine",1-4,1.05,N,SVALE1,4.2,4.2,0
+"EDL (OCI) Pty Ltd","Glennies Creek Power Station ",NSW1,"Generator ",Non-Market,Non-Scheduled,Fossil,"Waste Coal Mine Gas",Combustion,"Compression Reciprocating Engine",1-12,1.08,N,-,13,13,
+"EDL (OCI) Pty Ltd","Oaky Creek 2 Waste Coal Mine Gas Power Station Units 1-15",NSW1,Generator,Market,Non-Scheduled,Fossil,"Waste Coal Mine Gas",Combustion,"Spark Ignition",1-5,3,Y,OAKY2,15,15,
 "EDL Projects (Australia) Pty Ltd","Moranbah North Power Station",QLD1,Generator,Market,Non-Scheduled,Renewable,"Waste Coal Mine Gas",Combustion,"Spark Ignition",1-21,3.02,Y,MBAHNTH,63,57,
 "Energy Pacific (Vic) Pty Ltd","Codrington Wind Farm",VIC1,Generator,Market,Non-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",1-14,1.3,N,CODRNGTON,18.2,18,
 "Energy Pacific (Vic) Pty Ltd","Yambuk Wind Farm ",VIC1,"Generator ",Market,Non-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",1-20,1.5,N,YAMBUKWF,30,30,
@@ -158,7 +160,6 @@ Participant,"Station Name",Region,"Dispatch Type",Category,Classification,"Fuel 
 "EnerNOC Pty Ltd","West Illawarra Leagues Club Plant",NSW1,Generator,Market,Non-Scheduled,"Fuel Oil",Diesel,Combustion,"Compression Reciprocating Engine",1,0.715,N,WESTILL1,1,1,
 "EnerNOC Pty Ltd","West Illawarra Leagues Club Plant",NSW1,Generator,Market,Non-Scheduled,"Fuel Oil",Diesel,Combustion,"Compression Reciprocating Engine",2,0.275,N,WESTILL1,-,-,
 "EnerNOC Pty Ltd","Western Suburbs League Club (Campbelltown) Plant",NSW1,Generator,Market,Non-Scheduled,"Fuel Oil",Diesel,Combustion,"Compression Reciprocating Engine",1,1,N,WESTCBT1,1,1,
-"EDL (OCI) Pty Ltd","Glennies Creek Power Station ",NSW1,"Generator ",Non-Market,Non-Scheduled,Fossil,"Waste Coal Mine Gas",Combustion,"Compression Reciprocating Engine",1-12,1.08,N,-,13,13,
 "EnviroGen Pty Limited","Teralba Power Station ",NSW1,Generator,Market,Non-Scheduled,Fossil,"Coal Seam Methane",Combustion,"Compression Reciprocating Engine",1-3,1,N,TERALBA,3,3,
 "Ergon Energy Queensland Pty Ltd","Barcaldine Power Station",QLD1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Combined Cycle Gas Turbine (CCGT)",1,37,N,BARCALDN,37,37,3
 "ERM Power Retail Pty Ltd","Oakey Power Station",QLD1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",1,141,N,OAKEY1,141,171,30
@@ -190,24 +191,25 @@ Participant,"Station Name",Region,"Dispatch Type",Category,Classification,"Fuel 
 "Hydro-Electric Corporation trading as Hydro Tasmania","Catagunya / Liapootah / Wayatinah Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity","C 1-2",24,Y,LI_WY_CA,170.1,183,110
 "Hydro-Electric Corporation trading as Hydro Tasmania","Catagunya / Liapootah / Wayatinah Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity","L 1-3",27.9,Y,LI_WY_CA,-,-,
 "Hydro-Electric Corporation trading as Hydro Tasmania","Catagunya / Liapootah / Wayatinah Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity","W 1-3",12.8,Y,LI_WY_CA,-,-,
-"Hydro-Electric Corporation trading as Hydro Tasmania","Catagunya Diesel Generation ",TAS1,Generator,Market,Non-Scheduled,Fossil,Diesel,Combustion,"Compression Reciprocating Engine",24,1,N,CATAGUN1,24,24,
+"Hydro-Electric Corporation trading as Hydro Tasmania","Catagunya Diesel Generation ",TAS1,Generator,Market,Non-Scheduled,Fossil,Diesel,Combustion,"Compression Reciprocating Engine",1-19,24,N,CATAGUN1,24,24,
 "Hydro-Electric Corporation trading as Hydro Tasmania","Cethana Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,85,N,CETHANA,85,100,40
 "Hydro-Electric Corporation trading as Hydro Tasmania","Cluny Power Station",TAS1,Generator,Market,Non-Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,17,N,CLUNY,17,19,
 "Hydro-Electric Corporation trading as Hydro Tasmania","Devils Gate Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,60,N,DEVILS_G,60,65,40
 "Hydro-Electric Corporation trading as Hydro Tasmania","Fisher Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,43.2,N,FISHER,43.2,46,30
 "Hydro-Electric Corporation trading as Hydro Tasmania","Gordon Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1-3,144,Y,GORDON,432,450,180
-"Hydro-Electric Corporation trading as Hydro Tasmania","George Town Diesel Generation",TAS1,Generator,Market,Non-Scheduled,Fossil,Diesel,Combustion,"Compression Reciprocating Engine",1,30,N,GEORGTN1,30,30,
+"Hydro-Electric Corporation trading as Hydro Tasmania","George Town Diesel Generation",TAS1,Generator,Market,Non-Scheduled,Fossil,Diesel,Combustion,"Compression Reciprocating Engine",1-19,30,N,GEORGTN1,30,30,
 "Hydro-Electric Corporation trading as Hydro Tasmania","John Butters Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,144,N,JBUTTERS,144,144,40
 "Hydro-Electric Corporation trading as Hydro Tasmania","Lake Echo Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,32.4,N,LK_ECHO,32.4,34,15
 "Hydro-Electric Corporation trading as Hydro Tasmania","Lemonthyme / Wilmot  Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity","L 1",51,Y,LEM_WIL,81.6,86,25
 "Hydro-Electric Corporation trading as Hydro Tasmania","Lemonthyme / Wilmot  Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity","W 1",30.6,Y,LEM_WIL,-,-,
 "Hydro-Electric Corporation trading as Hydro Tasmania","Mackintosh Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,79.9,N,MACKNTSH,79.9,89,40
 "Hydro-Electric Corporation trading as Hydro Tasmania","Meadowbank Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,40,N,MEADOWBK,40,42,10
-"Hydro-Electric Corporation trading as Hydro Tasmania","Meadowbank Diesel Generation",TAS1,Generator,Market,Non-Scheduled,Fossil,Diesel,Combustion,"Compression Reciprocating Engine",1,24,N,MEADOWB2,24,24,
+"Hydro-Electric Corporation trading as Hydro Tasmania","Meadowbank Diesel Generation",TAS1,Generator,Market,Non-Scheduled,Fossil,Diesel,Combustion,"Compression Reciprocating Engine",1-19,24,N,MEADOWB2,24,24,
 "Hydro-Electric Corporation trading as Hydro Tasmania","Musselroe Wind Farm",TAS1,Generator,Market,Semi-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",1-56,3,N,MUSSELR1,168,168,17
 "Hydro-Electric Corporation trading as Hydro Tasmania","Paloona Power Station",TAS1,Generator,Market,Non-Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,28,N,PALOONA,28,33,
 "Hydro-Electric Corporation trading as Hydro Tasmania","Poatina Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1-2,50,Y,POAT110,100,124,20
 "Hydro-Electric Corporation trading as Hydro Tasmania","Poatina Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",3-6,50,Y,POAT220,200,248,40
+"Hydro-Electric Corporation trading as Hydro Tasmania","Port Latta Diesel Generation",TAS1,Generator,Market,Non-Scheduled,Fossil,Diesel,Combustion,"Compression Reciprocating Engine",1-19,23,N,PORTLAT1,23,23,
 "Hydro-Electric Corporation trading as Hydro Tasmania","Reece Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,115.6,N,REECE1,115.6,119,40
 "Hydro-Electric Corporation trading as Hydro Tasmania","Reece Power Station",TAS1,Generator,Market,Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",2,115.6,N,REECE2,115.6,119,40
 "Hydro-Electric Corporation trading as Hydro Tasmania","Repulse Power Station",TAS1,Generator,Market,Non-Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,28,N,REPULSE,28,29,
@@ -292,7 +294,6 @@ Participant,"Station Name",Region,"Dispatch Type",Category,Classification,"Fuel 
 "Origin Energy Electricity Limited","Roma Gas Turbine Station",QLD1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",7,40,N,ROMA_7,40,42,9
 "Origin Energy Electricity Limited","Roma Gas Turbine Station",QLD1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",8,40,N,ROMA_8,40,42,9
 "Origin Energy Electricity Limited","Whitwood Road Renewable Energy Facility",QLD1,Generator,Market,Non-Scheduled,"Renewable/ Biomass / Waste","Landfill Methane / Landfill Gas",Combustion,"Compression Reciprocating Engine",1,1.1,N,WHIT1,1,1,
-"Origin Energy Electricity Limited","Wonthaggi Wind Farm",VIC1,Generator,Market,Non-Scheduled,Wind,,Renewable,"Wind - Onshore",1-6,2,Y,WONWP,12,12,
 "Origin Energy Uranquinty Power Pty Ltd","Uranquinty Power Station ",NSW1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",1,166,N,URANQ11,166,166,34
 "Origin Energy Uranquinty Power Pty Ltd","Uranquinty Power Station ",NSW1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",2,166,N,URANQ12,166,166,34
 "Origin Energy Uranquinty Power Pty Ltd","Uranquinty Power Station ",NSW1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Open Cycle Gas turbines (OCGT)",3,166,N,URANQ13,166,166,34
@@ -309,6 +310,7 @@ Participant,"Station Name",Region,"Dispatch Type",Category,Classification,"Fuel 
 "Pioneer Sugar Mills Pty Ltd","Pioneer Sugar Mill",QLD1,Generator,Non-Market,Non-Scheduled,"Renewable/ Biomass / Waste",Bagasse,Combustion,"Steam Sub-Critical",1,30.86,N,-,30.86,68,
 "Pioneer Sugar Mills Pty Ltd","Pioneer Sugar Mill",QLD1,Generator,Non-Market,Non-Scheduled,"Renewable/ Biomass / Waste",Bagasse,Combustion,"Steam Sub-Critical",2,36.92,N,-,36.92,-,
 "Progressive Green Pty Ltd","South East Water - Hallam Hydro Plant",VIC1,Generator,Market,Non-Scheduled,Hydro,Water,Renewable,"Hydro - Gravity",1,0.25,N,HLMSEW01,0.25,1,
+"Progressive Green Pty Ltd","Wonthaggi Wind Farm",VIC1,Generator,Market,Non-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",1-6,2,Y,WONWP,12,12,
 "Pyrenees Wind Energy Development Pty Ltd","Waubra Wind Farm",VIC1,Generator,Market,Non-Scheduled,Wind,Wind,Renewable,"Wind - Onshore",1-128,1.5,Y,WAUBRAWF,192,192,
 "QGC Sales Qld Pty Ltd","Condamine Power Station A",QLD1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Combined Cycle Gas Turbine (CCGT)",1-2,43,Y,CPSA,144,144,29
 "QGC Sales Qld Pty Ltd","Condamine Power Station A",QLD1,Generator,Market,Scheduled,Fossil,"Natural Gas",Combustion,"Combined Cycle Gas Turbine (CCGT)",3,57,Y,CPSA,-,-,

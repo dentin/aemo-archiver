@@ -1,3 +1,6 @@
+### 0.10.1.1, 2016-04-07
+* Updated the AEMO power station metadata.
+
 ### 0.8.2.0, 2016-02-24
 * Updated the AEMO power station metadata.
 
