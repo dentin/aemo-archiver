@@ -47,7 +47,7 @@ GA_PS_XSLT="${PSDIR}/GA_power_station_latlong.xsl"
 # Put the "name,lat long" data in here
 GA_PS_LATLONG='GA_power_station_locations.csv'
 
-echo "Download the Geoscience Australia ASEIS Power Station WFS data"
+echo "Download the Geoscience Australia Power Station WFS data"
 curl --silent -o "${GA_PS_FILE}" "${GA_PS_URL}"
 echo "Extract the names and lat/longs using XSLT"
 xsltproc "${GA_PS_XSLT}" "${GA_PS_FILE}" | sort > "${PSDIR}/${GA_PS_LATLONG}"
