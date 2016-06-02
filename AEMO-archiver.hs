@@ -14,17 +14,21 @@ import           AEMO.Types
 
 import           Control.Lens
 
-import Control.Monad.Logger (LogLevel(..))
+import           Control.Monad.Logger        (LogLevel (..))
 
-import qualified Data.Configurator as C
+import qualified Data.ByteString.Char8       as C8
 
+import           Configuration.Utils         hiding (decode)
+import           PkgInfo_aemo_archiver
+
+mainInfo :: ProgramInfo AEMOConf
+mainInfo = programInfo "aemo-archiver" pAEMOConf defaultAemoConfig
 
 main :: IO ()
-main = do
+main = runWithPkgInfoConfiguration mainInfo pkgInfo $ \conf -> do
     hSetBuffering stdout NoBuffering
-    (conf,_tid) <- C.autoReload C.autoConfig ["/etc/aremi/aemo.conf"]
-    connStr <- C.require conf "db-conn-string"
-    conns <- C.lookupDefault 10 conf "db-connections"
+    let conns   = conf ^. aemoDB . dbConnections
+        connStr = C8.pack $ conf ^. aemoDB . dbConnString
 
     execAppM (AS Nothing makeLog LevelInfo) $ do
         withPostgresqlPool connStr conns $ \conn -> do
@@ -32,5 +36,3 @@ main = do
             _ <- fetchArchiveActualLoad
             _ <- fetchDaily5mActualLoad
             pure ()
-
-

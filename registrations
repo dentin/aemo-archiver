@@ -27,7 +27,7 @@ BASE_URL='http://www.aemo.com.au/About-the-Industry/Registration/Current-Registr
 EXCEL_FILE_NAME="${PSDIR}/Registration_and_Exemption_List.xls"
 # Grab the URL of the file out of the HTML, convert spaces to %20
 echo "Finding the URL of the AEMO Registration_and_Exemption_List"
-FILE_PART_URL=$(curl --silent "${BASE_URL}" | perl -ne '/a href="(.+)">Registration and Exemption List</ && print $1' | perl -pe 's/ /%20/g')
+FILE_PART_URL=$(curl --silent "${BASE_URL}" | perl -ne '/a href="(.+)">NEM Registration and Exemption List</ && print $1' | perl -pe 's/ /%20/g')
 
 echo "Getting the actual list"
 curl --silent -o "${EXCEL_FILE_NAME}" "${BASE_URL}/${FILE_PART_URL}"
@@ -38,8 +38,8 @@ ssconvert --export-file-per-sheet "${EXCEL_FILE_NAME}" "${PSDIR}/nem-%s.csv"
 AEMO_GENS_LOADS='nem-Generators and Scheduled Loads.csv'
 
 
-# The Geoscience Australia ASEIS list of power stations as a WFS service
-GA_PS_URL='http://www.ga.gov.au/gis/services/energy/ASEIS_Features/MapServer/WFSServer?service=WFS&request=GetFeature&typeName=energy_ASEIS_Features:Power_Stations&srsName=EPSG:4326&maxFeatures=100000'
+# The Geoscience Australia list of power stations as a WFS service
+GA_PS_URL='http://services.ga.gov.au/gis/services/Electricity_Infrastructure/MapServer/WFSServer?service=WFS&request=GetFeature&typeName=Electricity_Infrastructure:National_Major_Power_Stations&srsName=EPSG:4326&maxFeatures=100000'
 # Save the WFS data in here
 GA_PS_FILE="${PSDIR}/GA_power_stations.gml"
 # XSLT stylesheet to extract power station name and lat/long from the GA WFS data
@@ -47,10 +47,10 @@ GA_PS_XSLT="${PSDIR}/GA_power_station_latlong.xsl"
 # Put the "name,lat long" data in here
 GA_PS_LATLONG='GA_power_station_locations.csv'
 
-echo "Download the Geoscience Australia ASEIS Power Station WFS data"
+echo "Download the Geoscience Australia Power Station WFS data"
 curl --silent -o "${GA_PS_FILE}" "${GA_PS_URL}"
 echo "Extract the names and lat/longs using XSLT"
-xsltproc "${GA_PS_XSLT}" "${GA_PS_FILE}" > "${PSDIR}/${GA_PS_LATLONG}"
+xsltproc "${GA_PS_XSLT}" "${GA_PS_FILE}" | sort > "${PSDIR}/${GA_PS_LATLONG}"
 
 
 echo "Compile and run the Java location matcher"

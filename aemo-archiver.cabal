@@ -8,9 +8,9 @@ name:                aemo-archiver
 -- for standards guiding when and how versions should be incremented.
 -- http://www.haskell.org/haskellwiki/Package_versioning_policy
 -- PVP summary:      +-+------- breaking API changes
---                   | | +----- non-breaking API additions
---                   | | | +--- code changes with no API change
-version:             0.8.1.0
+--                   | |  +----- non-breaking API additions
+--                   | |  | +--- code changes with no API change
+version:             0.10.1.1
 
 -- A short (one-line) description of the package.
 synopsis:            Utility for retriving AEMO power station data and inserting into a database
@@ -36,14 +36,14 @@ maintainer:          Alex.Mason@nicta.com.au
 
 -- category:
 
-build-type:          Simple
+build-type:          Custom
 
 -- Extra files to be distributed with the package, such as examples or a
 -- README.
 -- extra-source-files:
 
 -- Constraint on the version of Cabal needed to build this package.
-cabal-version:       >=1.20
+cabal-version:       >=1.22
 
 
 library
@@ -55,11 +55,11 @@ library
 
   build-depends:        base                  >= 4.6      && < 4.9
                         , bytestring            >= 0.10     && < 0.11
-                        , HTTP                  >= 4000.2   && < 4000.3
+                        , HTTP                  >= 4000.2   && < 4000.4
                         , text                  >= 1.1      && < 2.0
                         , tagsoup               >= 0.13.0   && < 0.14
                         , cassava               >= 0.4.2    && < 0.5
-                        , vector                >= 0.10     && < 0.11
+                        , vector                >= 0.10     && < 0.12
                         , network-uri           >= 2.6      && < 2.7
                         , split                 >= 0.2      && < 0.3
                         , zip-archive           >= 0.2.3    && < 0.2.4
@@ -79,6 +79,7 @@ library
                         , containers
                         , resource-pool
                         , here
+                        , configuration-tools   >= 0.2.14  && < 0.3
 
 
   -- Base language which the package is written in.
@@ -96,6 +97,7 @@ executable aemo-archiver
                  , AEMO.Types
                  , AEMO.WebScraper
                  , AEMO.ZipTree
+                 , PkgInfo_aemo_archiver
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
@@ -104,11 +106,11 @@ executable aemo-archiver
   build-depends:        base                  >= 4.6      && < 4.9
                         , aemo-archiver
                         , bytestring            >= 0.10     && < 0.11
-                        , HTTP                  >= 4000.2   && < 4000.3
+                        , HTTP                  >= 4000.2   && < 4000.4
                         , text                  >= 1.1      && < 2.0
                         , tagsoup               >= 0.13.0   && < 0.14
                         , cassava               >= 0.4.2    && < 0.5
-                        , vector                >= 0.10     && < 0.11
+                        , vector                >= 0.10     && < 0.12
                         , network-uri           >= 2.6      && < 2.7
                         , split                 >= 0.2      && < 0.3
                         , zip-archive           >= 0.2.3    && < 0.2.4
@@ -125,10 +127,10 @@ executable aemo-archiver
                         , mtl                   >= 2.1      && < 2.3
                         , fast-logger
                         , transformers-base     >= 0.4      && < 0.5
-                        , configurator          >= 0.3      && < 1.0
                         , containers
                         , resource-pool
                         , here
+                        , configuration-tools   >= 0.2.14  && < 0.3
 
 
 
@@ -144,6 +146,7 @@ executable sync-latest
                  , AEMO.Types
                  , AEMO.WebScraper
                  , AEMO.ZipTree
+                 , PkgInfo_sync_latest
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
@@ -152,11 +155,11 @@ executable sync-latest
   build-depends:        base                  >= 4.6      && < 4.9
                         , aemo-archiver
                         , bytestring            >= 0.10     && < 0.11
-                        , HTTP                  >= 4000.2   && < 4000.3
+                        , HTTP                  >= 4000.2   && < 4000.4
                         , text                  >= 1.1      && < 2.0
                         , tagsoup               >= 0.13.0   && < 0.14
                         , cassava               >= 0.4.2    && < 0.5
-                        , vector                >= 0.10     && < 0.11
+                        , vector                >= 0.10     && < 0.12
                         , network-uri           >= 2.6      && < 2.7
                         , split                 >= 0.2      && < 0.3
                         , zip-archive           >= 0.2.3    && < 0.2.4
@@ -173,10 +176,10 @@ executable sync-latest
                         , mtl                   >= 2.1      && < 2.3
                         , fast-logger
                         , transformers-base     >= 0.4      && < 0.5
-                        , configurator          >= 0.3      && < 1.0
                         , containers
                         , resource-pool
                         , here
+                        , configuration-tools   >= 0.2.14  && < 0.3
 
 
   -- Directories containing source files.
@@ -194,6 +197,7 @@ executable initDB
                  , AEMO.Types
                  , AEMO.WebScraper
                  , AEMO.ZipTree
+                 , PkgInfo_initDB
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
 
@@ -201,11 +205,11 @@ executable initDB
   build-depends:        base                  >= 4.6      && < 4.9
                         , aemo-archiver
                         , bytestring            >= 0.10     && < 0.11
-                        , HTTP                  >= 4000.2   && < 4000.3
+                        , HTTP                  >= 4000.2   && < 4000.4
                         , text                  >= 1.1      && < 2.0
                         , tagsoup               >= 0.13.0   && < 0.14
                         , cassava               >= 0.4.2    && < 0.5
-                        , vector                >= 0.10.12  && < 0.10.13
+                        , vector                >= 0.10     && < 0.12
                         , network-uri           >= 2.6      && < 2.7
                         , split                 >= 0.2      && < 0.3
                         , zip-archive           >= 0.2.3    && < 0.2.4
@@ -224,10 +228,11 @@ executable initDB
                         , fast-logger
                         , transformers-base     >= 0.4      && < 0.5
                         , attoparsec            >= 0.10     && < 1.0
-                        , configurator          >= 0.3      && < 1.0
                         , containers
                         , resource-pool
                         , here
+                        , scientific
+                        , configuration-tools   >= 0.2.14  && < 0.3
 
 
 

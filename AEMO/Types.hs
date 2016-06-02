@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP                        #-}
 {-# LANGUAGE EmptyDataDecls             #-}
 {-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
@@ -40,7 +41,9 @@ import           System.Log.FastLogger
 
 import           Control.Exception              (SomeException, try)
 
-import           Data.Csv
+import           Data.Csv                       (FromNamedRecord, ToNamedRecord,
+                                                 namedRecord)
+import qualified Data.Csv                       as C
 
 import           Data.Time.LocalTime
 
@@ -51,8 +54,85 @@ import           Data.Time.Format               (formatTime)
 import           System.Locale                  (defaultTimeLocale)
 #endif
 
+import           Configuration.Utils hiding ((.=))
+import qualified Configuration.Utils as U
 
+data DBConf = DBConf
+  {_dbConnString :: String
+  ,_dbConnections :: Int
+  }
+$(makeLenses ''DBConf)
 
+defaultDBConf :: DBConf
+defaultDBConf = DBConf
+  {_dbConnString = ""
+  ,_dbConnections = 2
+  }
+
+instance FromJSON (DBConf -> DBConf) where
+  parseJSON = withObject "DBConf" $ \o -> id
+    <$< dbConnString  ..: "dbConnString" % o
+    <*< dbConnections ..: "dbConnections" % o
+
+instance ToJSON DBConf where
+  toJSON a = object
+    ["dbConnString"  U..= _dbConnString  a
+    ,"dbConnections" U..= _dbConnections a
+    ]
+
+pDBConf :: MParser DBConf
+pDBConf = id
+  <$< dbConnString  .:: strOption    % short 'd' <> long "db-conn-string" <> metavar "CONNSTR"
+      <> help "PostgreSQL connection string"
+  <*< dbConnections .:: option auto  % short 'n' <> long "db-connections" <> metavar "INT"
+      <> help "Number of database connections (minimum 2)"
+
+data AEMOConf = AEMOConf
+  { _aemoDB             :: DBConf
+  , _aemoGensAndLoads   :: FilePath
+  , _aemoStationLocs    :: FilePath
+  , _aemoDryRun         :: Bool
+  , _aemoUpdateStations :: Bool
+  }
+$(makeLenses ''AEMOConf)
+
+defaultAemoConfig :: AEMOConf
+defaultAemoConfig = AEMOConf
+  {_aemoDB             = defaultDBConf
+  ,_aemoGensAndLoads   = "power_station_metadata/nem-Generators and Scheduled Loads.csv"
+  ,_aemoStationLocs    = "power_station_metadata/power_station_locations.csv"
+  ,_aemoDryRun         = True
+  ,_aemoUpdateStations = False
+  }
+
+instance FromJSON (AEMOConf -> AEMOConf) where
+  parseJSON = withObject "AEMOConf" $ \o -> id
+    <$< aemoDB             %.: "aemoDB"          % o
+    <*< aemoGensAndLoads   ..: "generators-csv"  % o
+    <*< aemoStationLocs    ..: "stations-csv"    % o
+    <*< aemoDryRun         ..: "dry-run"         % o
+    <*< aemoUpdateStations ..: "update-stations" % o
+
+instance ToJSON AEMOConf where
+  toJSON a = object
+    ["aemoDB"             U..= _aemoDB a
+    ,"aemoGensAndLoads"   U..= _aemoGensAndLoads a
+    ,"aemoStationLocs"    U..= _aemoStationLocs a
+    ,"aemoDryRun"         U..= _aemoDryRun a
+    ,"aemoUpdateStations" U..= _aemoUpdateStations a
+    ]
+
+pAEMOConf :: MParser AEMOConf
+pAEMOConf = id
+  <$< aemoDB             %:: pDBConf
+  <*< aemoGensAndLoads   .:: strOption    % short 'g' <> long "generators-csv" <> metavar "CSV" <> action "file"
+    <> help "path to Generation and Loads CSV file"
+  <*< aemoStationLocs    .:: strOption    % short 's' <> long "stations-csv"   <> metavar "CSV" <> action "file"
+    <> help "path to power station locations CSV file"
+  <*< aemoDryRun         .:: switch       % short 'd' <> long "dry-run"
+    <> help "Don't actually perform DB modifications"
+  <*< aemoUpdateStations .:: switch       % short 'u' <> long "update-stations"
+    <> help "Update station locations"
 
 type FileName = String
 
@@ -110,8 +190,8 @@ runAppPool pool lev app = try $ do
 
 
 makeLog :: LogLevel -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
-makeLog minLev loc src lev str = if lev >= minLev
-    then B8.putStrLn . fromLogStr $ defaultLogStr loc src lev str
+makeLog minLev loc src lev lstr = if lev >= minLev
+    then B8.putStrLn . fromLogStr $ defaultLogStr loc src lev lstr
     else return ()
 
 
@@ -173,31 +253,31 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 
 instance ToNamedRecord PowerStation where
     toNamedRecord (PowerStation {..}) = namedRecord [
-        "Participant"                  .= powerStationParticipant,
-        "Station Name"                 .= powerStationStationName,
-        "Region"                       .= powerStationRegion,
-        "Dispatch Type"                .= powerStationDispatchType,
-        "Category"                     .= powerStationCategory,
-        "Classification"               .= powerStationClassification,
-        "Fuel Source - Primary"        .= powerStationFuelSourcePrimary,
-        "Fuel Source - Descriptor"     .= powerStationFuelSourceDescriptor,
-        "Technology Type - Primary"    .= powerStationTechTypePrimary,
-        "Technology Type - Descriptor" .= powerStationTechTypeDescriptor,
-        "Physical Unit No."            .= powerStationPhysicalUnitNo,
-        "Unit Size (MW)"               .= powerStationUnitSizeMW,
-        "Aggregation"                  .= bToT powerStationAggregation,
-        "DUID"                         .= powerStationDuid,
-        "Reg Cap (MW)"                 .= powerStationRegCapMW,
-        "Max Cap (MW)"                 .= powerStationMaxCapMW,
-        "Max ROC/Min"                  .= powerStationMaxROCPerMin
+        "Participant"                  C..= powerStationParticipant,
+        "Station Name"                 C..= powerStationStationName,
+        "Region"                       C..= powerStationRegion,
+        "Dispatch Type"                C..= powerStationDispatchType,
+        "Category"                     C..= powerStationCategory,
+        "Classification"               C..= powerStationClassification,
+        "Fuel Source - Primary"        C..= powerStationFuelSourcePrimary,
+        "Fuel Source - Descriptor"     C..= powerStationFuelSourceDescriptor,
+        "Technology Type - Primary"    C..= powerStationTechTypePrimary,
+        "Technology Type - Descriptor" C..= powerStationTechTypeDescriptor,
+        "Physical Unit No."            C..= powerStationPhysicalUnitNo,
+        "Unit Size (MW)"               C..= powerStationUnitSizeMW,
+        "Aggregation"                  C..= bToT powerStationAggregation,
+        "DUID"                         C..= powerStationDuid,
+        "Reg Cap (MW)"                 C..= powerStationRegCapMW,
+        "Max Cap (MW)"                 C..= powerStationMaxCapMW,
+        "Max ROC/Min"                  C..= powerStationMaxROCPerMin
         ]
 
 instance ToNamedRecord PowerStationDatum where
     toNamedRecord (PowerStationDatum {..}) = namedRecord
-        [ "DUID"        .= powerStationDatumDuid
-        , "Sample Time (AEST)" .= formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%z"
+        [ "DUID"        C..= powerStationDatumDuid
+        , "Sample Time (AEST)" C..= formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%z"
                                                 (utcToZonedTime aest powerStationDatumSampleTime)
-        , "MW"          .= powerStationDatumMegaWatt
+        , "MW"          C..= powerStationDatumMegaWatt
         ]
 
 aest :: TimeZone
@@ -210,23 +290,23 @@ aest = TimeZone
 instance FromNamedRecord PowerStation where
     parseNamedRecord m =
         PowerStation
-        <$> m .: "Participant"
-        <*> m .: "Station Name"
-        <*> m .: "Region"
-        <*> m .: "Dispatch Type"
-        <*> m .: "Category"
-        <*> m .: "Classification"
-        <*> m .: "Fuel Source - Primary"
-        <*> m .: "Fuel Source - Descriptor"
-        <*> m .: "Technology Type - Primary"
-        <*> m .: "Technology Type - Descriptor"
-        <*> m .: "Physical Unit No."
-        <*> m .: "Unit Size (MW)"
-        <*> (tToB <$> m .: "Aggregation")
-        <*> m .: "DUID"
-        <*> m .: "Reg Cap (MW)"
-        <*> m .: "Max Cap (MW)"
-        <*> m .: "Max ROC/Min"
+        <$> m C..: "Participant"
+        <*> m C..: "Station Name"
+        <*> m C..: "Region"
+        <*> m C..: "Dispatch Type"
+        <*> m C..: "Category"
+        <*> m C..: "Classification"
+        <*> m C..: "Fuel Source - Primary"
+        <*> m C..: "Fuel Source - Descriptor"
+        <*> m C..: "Technology Type - Primary"
+        <*> m C..: "Technology Type - Descriptor"
+        <*> m C..: "Physical Unit No."
+        <*> m C..: "Unit Size (MW)"
+        <*> (tToB <$> m C..: "Aggregation")
+        <*> m C..: "DUID"
+        <*> m C..: "Reg Cap (MW)"
+        <*> m C..: "Max Cap (MW)"
+        <*> m C..: "Max ROC/Min"
 
 bToT :: Bool -> Text
 bToT b = if b then "Y" else "N"
