@@ -1,3 +1,6 @@
+### 0.10.1.2, 2016-07-14
+* Partition table SQL script added.
+
 ### 0.10.1.1, 2016-04-07
 * Updated the AEMO power station metadata.
 * Use new configuration format, see config/aemo-archiver.yaml and the `--help` flag in executables
