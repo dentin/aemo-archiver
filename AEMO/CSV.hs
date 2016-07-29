@@ -39,17 +39,21 @@ import           AEMO.Types
 import           AEMO.WebScraper
 import           AEMO.ZipTree
 
+import           Control.Lens
+
 fetchDaily5mActualLoad :: AppM Int
 fetchDaily5mActualLoad = do
     $(logInfo) "Finding new 5 minute zips..."
-    zipLinks <- liftIO $ joinLinks aemo5mPSURL
+    opts <- use httpOptions
+    zipLinks <- liftIO $ joinLinks opts aemo5mPSURL
     retrieve 0 zipLinks
 
 
 fetchArchiveActualLoad :: AppM Int
 fetchArchiveActualLoad = do
     $(logInfo) "Finding new archive zips..."
-    zipLinks <- liftIO $ joinLinks aemoPSArchiveURL
+    opts <- use httpOptions
+    zipLinks <- liftIO $ joinLinks opts aemoPSArchiveURL
     retrieve 1 zipLinks
 
 
@@ -61,7 +65,8 @@ retrieve depth zipLinks = do
     unseen <- runDB $ filterM (zipNotInDb . fst) zipLinks
 
     $(logInfo) $ T.pack ("Fetching " ++ show (length unseen) ++ " new files:")
-    fetched <- liftIO $ fetchFiles unseen
+    opts <- use httpOptions
+    fetched <- liftIO $ fetchFiles opts unseen
     $(logInfo) "Done fetching new files"
     let (ferrs, rslts) = partition' fetched
     unless (rslts `seq` null ferrs) $ do
@@ -156,5 +161,3 @@ partition' ps = go ps  where
         in case x of
             (a, Left b ) -> ((a,b):ls, rs)
             (a, Right c) -> (ls, (a,c):rs)
-
-
