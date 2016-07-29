@@ -1,3 +1,6 @@
+### 0.11.0.0, 2016-07-29
+* Switch to using Wreq for all HTTP requests, should be a bit faster and nicer on the server.
+
 ### 0.10.1.2, 2016-07-14
 * Partition table SQL script added.
 
