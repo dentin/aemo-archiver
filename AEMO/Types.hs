@@ -57,6 +57,8 @@ import           System.Locale                  (defaultTimeLocale)
 import           Configuration.Utils hiding ((.=))
 import qualified Configuration.Utils as U
 
+import qualified Network.Wreq as Wreq
+
 data DBConf = DBConf
   {_dbConnString :: String
   ,_dbConnections :: Int
@@ -138,7 +140,8 @@ type FileName = String
 
 data AppState = AS {_connPool     :: Maybe ConnectionPool
                     ,_logger      :: LogLevel -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
-                    ,_minLogLevel :: LogLevel}
+                    ,_minLogLevel :: LogLevel
+                    ,_httpOptions :: Wreq.Options}
 $(makeLenses ''AppState)
 
 -- type AppM a = StateT AppState IO a
@@ -177,16 +180,16 @@ execAppM :: AppState -> AppM a -> IO a
 execAppM st (AppM m) = evalStateT m st
 
 
-runApp :: ConnectionString -> Int -> LogLevel -> AppM a -> IO (Either SomeException a)
-runApp cstr nconn lev app = try $ do
-    execAppM (AS Nothing makeLog lev) $ do
+runApp :: ConnectionString -> Int -> LogLevel -> Wreq.Options -> AppM a -> IO (Either SomeException a)
+runApp cstr nconn lev opts app = try $ do
+    execAppM (AS Nothing makeLog lev opts) $ do
         withPostgresqlPool cstr nconn $ \conn -> do
             connPool ?= conn
             app
 
-runAppPool :: ConnectionPool -> LogLevel -> AppM a -> IO (Either SomeException a)
-runAppPool pool lev app = try $ do
-    execAppM (AS (Just pool) makeLog lev) app
+runAppPool :: ConnectionPool -> LogLevel -> Wreq.Options -> AppM a -> IO (Either SomeException a)
+runAppPool pool lev opts app = try $ do
+    execAppM (AS (Just pool) makeLog lev opts) app
 
 
 makeLog :: LogLevel -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
@@ -315,4 +318,4 @@ tToB :: Text -> Bool
 tToB t = case t of
     "N" -> False
     "Y" -> True
-    _ -> error $ "temp-server.hs tToB: could not parse string: " ++ show t
+    _ -> error $ "AEMO.Types.tToB: could not parse string: " ++ show t

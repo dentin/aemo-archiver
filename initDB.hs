@@ -53,6 +53,8 @@ import           Data.Scientific
 import Configuration.Utils hiding (decode)
 import PkgInfo_initDB
 
+import qualified Network.Wreq as Wreq
+
 mainInfo :: ProgramInfo AEMOConf
 mainInfo = programInfo "initDB" pAEMOConf defaultAemoConfig
 
@@ -62,7 +64,7 @@ main = runWithPkgInfoConfiguration mainInfo pkgInfo $ \conf -> do
     let conns   = conf ^. aemoDB . dbConnections
         connStr = C8.pack $ conf ^. aemoDB . dbConnString
 
-    execAppM (AS Nothing makeLog LevelInfo) $ do
+    execAppM (AS Nothing makeLog LevelInfo Wreq.defaults) $ do
         withPostgresqlPool connStr conns $ \conn -> do
             connPool ?= conn
 

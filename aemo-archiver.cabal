@@ -80,6 +80,7 @@ library
                         , resource-pool
                         , here
                         , configuration-tools   >= 0.2.14  && < 0.3
+                        , wreq                  >= 0.4.1.0 && < 0.5
 
 
   -- Base language which the package is written in.
@@ -131,6 +132,7 @@ executable aemo-archiver
                         , resource-pool
                         , here
                         , configuration-tools   >= 0.2.14  && < 0.3
+                        , wreq                  >= 0.4.1.0 && < 0.5
 
 
 
@@ -180,6 +182,7 @@ executable sync-latest
                         , resource-pool
                         , here
                         , configuration-tools   >= 0.2.14  && < 0.3
+                        , wreq                  >= 0.4.1.0 && < 0.5
 
 
   -- Directories containing source files.
@@ -233,6 +236,7 @@ executable initDB
                         , here
                         , scientific
                         , configuration-tools   >= 0.2.14  && < 0.3
+                        , wreq                  >= 0.4.1.0 && < 0.5
 
 
 
