@@ -21,25 +21,21 @@ MANUAL_LOCATIONS='manual_station_locations.csv'
 POWER_STATION_LOCATIONS_CSV='power_station_locations.csv'
 
 
-# Where to get the URL of the file from
-BASE_URL='http://www.aemo.com.au/About-the-Industry/Registration/Current-Registration-and-Exemption-lists'
-# What to name the file when downloaded
+# Where to get the Excel file
+EXCEL_FILE_URL='http://www.aemo.com.au/-/media/Files/Electricity/NEM/Participant_Information/Current-Participants/2016/NEM-Registration-and-Exemption-List.xls'
+# Where to save it
 EXCEL_FILE_NAME="${PSDIR}/Registration_and_Exemption_List.xls"
-# Grab the URL of the file out of the HTML, convert spaces to %20
-echo "Finding the URL of the AEMO Registration_and_Exemption_List"
-FILE_PART_URL=$(curl --silent "${BASE_URL}" | perl -ne '/a href="(.+)">NEM Registration and Exemption List</ && print $1' | perl -pe 's/ /%20/g')
 
-echo "Getting the actual list"
-curl --silent -o "${EXCEL_FILE_NAME}" "${BASE_URL}/${FILE_PART_URL}"
+echo "Getting the Excel file"
+curl --silent -o "${EXCEL_FILE_NAME}" "${EXCEL_FILE_URL}"
 echo "Export each sheet to a CSV file"
 ssconvert --export-file-per-sheet "${EXCEL_FILE_NAME}" "${PSDIR}/nem-%s.csv"
 
 # The interesting output file should be called 'nem-Generators and Scheduled Loads.csv' (unless they've changed the spreadsheet).
 AEMO_GENS_LOADS='nem-Generators and Scheduled Loads.csv'
 
-
 # The Geoscience Australia list of power stations as a WFS service
-GA_PS_URL='http://services.ga.gov.au/gis/services/Electricity_Infrastructure/MapServer/WFSServer?service=WFS&request=GetFeature&typeName=Electricity_Infrastructure:National_Major_Power_Stations&srsName=EPSG:4326&maxFeatures=100000'
+GA_PS_URL='http://services.ga.gov.au/site_3/services/Electricity_Infrastructure/MapServer/WFSServer?service=WFS&request=GetFeature&typeName=Electricity_Infrastructure:National_Major_Power_Stations&srsName=EPSG:4326&maxFeatures=100000'
 # Save the WFS data in here
 GA_PS_FILE="${PSDIR}/GA_power_stations.gml"
 # XSLT stylesheet to extract power station name and lat/long from the GA WFS data
