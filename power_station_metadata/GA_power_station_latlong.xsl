@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <xsl:stylesheet version="1.0"
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-    xmlns:Electricity_Infrastructure="http://win-amap-ext01:6080/arcgis/services/Electricity_Infrastructure/MapServer/WFSServer"
+    xmlns:Electricity_Infrastructure="http://win-amap-ext03:6080/arcgis/services/Electricity_Infrastructure/MapServer/WFSServer"
     xmlns:gml="http://www.opengis.net/gml">
 
 <xsl:output method="text" encoding="utf-8" />
