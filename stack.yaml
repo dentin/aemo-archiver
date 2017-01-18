@@ -2,7 +2,5 @@ flags: {}
 packages:
 - '.'
 extra-deps:
-- time-units-1.0.0
-- configuration-tools-0.2.14
-resolver: lts-5.10
+resolver: lts-7.16
 local-bin-path: dist

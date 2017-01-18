@@ -54,13 +54,13 @@ import           Data.Time.Format               (formatTime)
 import           System.Locale                  (defaultTimeLocale)
 #endif
 
-import           Configuration.Utils hiding ((.=))
-import qualified Configuration.Utils as U
+import           Configuration.Utils            hiding ((.=))
+import qualified Configuration.Utils            as U
 
-import qualified Network.Wreq as Wreq
+import qualified Network.Wreq                   as Wreq
 
 data DBConf = DBConf
-  {_dbConnString :: String
+  {_dbConnString  :: String
   ,_dbConnections :: Int
   }
 $(makeLenses ''DBConf)
@@ -169,7 +169,7 @@ instance MonadLoggerIO AppM where
 instance MonadBaseControl IO AppM where
     type StM AppM a = StM (StateT AppState IO) a
 
-    liftBaseWith f = AppM . liftBaseWith $ \runInBase -> f $ runInBase . runAppM
+    liftBaseWith f = AppM (liftBaseWith (\runInBase -> f (\x -> runInBase (runAppM x))))
     restoreM     = AppM . restoreM
     {-# INLINABLE liftBaseWith #-}
     {-# INLINABLE restoreM #-}
@@ -318,4 +318,4 @@ tToB :: Text -> Bool
 tToB t = case t of
     "N" -> False
     "Y" -> True
-    _ -> error $ "AEMO.Types.tToB: could not parse string: " ++ show t
+    _   -> error $ "AEMO.Types.tToB: could not parse string: " ++ show t
