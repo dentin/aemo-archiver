@@ -12,8 +12,14 @@ public class PowerStationMatcher {
      */
     public static void main(String[] args) throws Exception {
         final Map<String, String> manualLocations = readCsv(args[0], 0, 1);
-        final Map<String, String> stations = readCsv(args[1], 13, 1, 1); // AEMO Generators list has a header
+        final Map<String, String> stations = readCsv(args[1], 14, 1, 1); // AEMO Generators list has a header
         final Map<String, String> locations = readCsv(args[2], 0, 1);
+
+        /* DEBUG
+        System.err.println("manualLocations.size(): " + manualLocations.size());
+        System.err.println("stations.size(): " + stations.size());
+        System.err.println("locations.size(): " + locations.size());
+        */
 
         // first remove matches we already have in the manual list from the AEMO station list
         for (Iterator<Map.Entry<String, String>> it = stations.entrySet().iterator(); it.hasNext(); ) {
@@ -71,6 +77,14 @@ public class PowerStationMatcher {
             final String value = sanitise(parts[valueCol]);
 
             if (key != null && value != null && !m.containsKey(key)) m.put(key, value);
+            /* DEBUG
+            else {
+                System.err.println("Could not parse line: " + line);
+                System.err.println("Key: " + key);
+                System.err.println("Value: " + value);
+                System.err.println("-------------------------------");
+            }
+            */
         }
         r.close();
         return m;
