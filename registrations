@@ -22,7 +22,7 @@ POWER_STATION_LOCATIONS_CSV='power_station_locations.csv'
 
 
 # Where to get the Excel file
-EXCEL_FILE_URL='http://www.aemo.com.au/-/media/Files/Electricity/NEM/Participant_Information/Current-Participants/2016/NEM-Registration-and-Exemption-List.xls'
+EXCEL_FILE_URL='http://www.aemo.com.au/-/media/Files/Electricity/NEM/Participant_Information/Current-Participants/NEM-Registration-and-Exemption-List.xls'
 # Where to save it
 EXCEL_FILE_NAME="${PSDIR}/Registration_and_Exemption_List.xls"
 
