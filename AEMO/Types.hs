@@ -14,7 +14,7 @@
 
 module AEMO.Types where
 
-import           Data.Text                      (Text)
+import           Data.Text                      (Text, strip)
 import           Data.Time                      (UTCTime)
 import           Database.Persist.TH            (mkMigrate, mkPersist,
                                                  persistLowerCase, share,
@@ -58,6 +58,8 @@ import           Configuration.Utils            hiding ((.=))
 import qualified Configuration.Utils            as U
 
 import qualified Network.Wreq                   as Wreq
+
+import           Data.Monoid                    ((<>))
 
 data DBConf = DBConf
   {_dbConnString  :: String
@@ -256,23 +258,23 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 
 instance ToNamedRecord PowerStation where
     toNamedRecord (PowerStation {..}) = namedRecord [
-        "Participant"                  C..= powerStationParticipant,
-        "Station Name"                 C..= powerStationStationName,
-        "Region"                       C..= powerStationRegion,
-        "Dispatch Type"                C..= powerStationDispatchType,
-        "Category"                     C..= powerStationCategory,
-        "Classification"               C..= powerStationClassification,
-        "Fuel Source - Primary"        C..= powerStationFuelSourcePrimary,
-        "Fuel Source - Descriptor"     C..= powerStationFuelSourceDescriptor,
-        "Technology Type - Primary"    C..= powerStationTechTypePrimary,
-        "Technology Type - Descriptor" C..= powerStationTechTypeDescriptor,
-        "Physical Unit No."            C..= powerStationPhysicalUnitNo,
-        "Unit Size (MW)"               C..= powerStationUnitSizeMW,
+        "Participant"                  C..= strip powerStationParticipant,
+        "Station Name"                 C..= strip powerStationStationName,
+        "Region"                       C..= strip powerStationRegion,
+        "Dispatch Type"                C..= strip powerStationDispatchType,
+        "Category"                     C..= strip powerStationCategory,
+        "Classification"               C..= strip powerStationClassification,
+        "Fuel Source - Primary"        C..= fmap strip powerStationFuelSourcePrimary,
+        "Fuel Source - Descriptor"     C..= fmap strip powerStationFuelSourceDescriptor,
+        "Technology Type - Primary"    C..= fmap strip powerStationTechTypePrimary,
+        "Technology Type - Descriptor" C..= fmap strip powerStationTechTypeDescriptor,
+        "Physical Unit No."            C..= fmap strip powerStationPhysicalUnitNo,
+        "Unit Size (MW)"               C..= strip powerStationUnitSizeMW,
         "Aggregation"                  C..= bToT powerStationAggregation,
-        "DUID"                         C..= powerStationDuid,
-        "Reg Cap (MW)"                 C..= powerStationRegCapMW,
-        "Max Cap (MW)"                 C..= powerStationMaxCapMW,
-        "Max ROC/Min"                  C..= powerStationMaxROCPerMin
+        "DUID"                         C..= strip powerStationDuid,
+        "Reg Cap (MW)"                 C..= fmap strip powerStationRegCapMW,
+        "Max Cap (MW)"                 C..= fmap strip powerStationMaxCapMW,
+        "Max ROC/Min"                  C..= fmap strip powerStationMaxROCPerMin
         ]
 
 instance ToNamedRecord PowerStationDatum where
