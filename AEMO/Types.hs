@@ -133,7 +133,7 @@ pAEMOConf = id
     <> help "path to Generation and Loads CSV file"
   <*< aemoStationLocs    .:: strOption    % short 's' <> long "stations-csv"   <> metavar "CSV" <> action "file"
     <> help "path to power station locations CSV file"
-  <*< aemoDryRun         .:: switch       % short 'd' <> long "dry-run"
+  <*< aemoDryRun         .:: switch       % short 'D' <> long "dry-run"
     <> help "Don't actually perform DB modifications"
   <*< aemoUpdateStations .:: switch       % short 'u' <> long "update-stations"
     <> help "Update station locations"
