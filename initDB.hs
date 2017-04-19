@@ -4,10 +4,10 @@
 
 module Main where
 
+import qualified Data.ByteString.Char8       as C8
 import           Data.ByteString.Lazy        (ByteString)
 import qualified Data.ByteString.Lazy        as B
 import qualified Data.ByteString.Lazy.Char8  as B8
-import qualified Data.ByteString.Char8       as C8
 import qualified Data.Vector                 as V
 
 import           Data.Text                   (Text, pack, unpack)
@@ -50,10 +50,10 @@ import           Data.Function               (on)
 
 import           Data.Scientific
 
-import Configuration.Utils hiding (decode)
-import PkgInfo_initDB
+import           Configuration.Utils         hiding (decode)
+import           PkgInfo_initDB
 
-import qualified Network.Wreq as Wreq
+import qualified Network.Wreq                as Wreq
 
 mainInfo :: ProgramInfo AEMOConf
 mainInfo = programInfo "initDB" pAEMOConf defaultAemoConfig
@@ -64,7 +64,7 @@ main = runWithPkgInfoConfiguration mainInfo pkgInfo $ \conf -> do
     let conns   = conf ^. aemoDB . dbConnections
         connStr = C8.pack $ conf ^. aemoDB . dbConnString
 
-    execAppM (AS Nothing makeLog LevelInfo Wreq.defaults) $ do
+    execAppM (AS Nothing makeLog LevelInfo Wreq.defaults) $
         withPostgresqlPool connStr conns $ \conn -> do
             connPool ?= conn
 
@@ -95,7 +95,7 @@ main = runWithPkgInfoConfiguration mainInfo pkgInfo $ \conf -> do
                     -- Load station data
                     let gensAndLoads = _aemoGensAndLoads conf
                     psExist <- doesFileExist gensAndLoads
-                    unless (psExist) $ do
+                    unless psExist $ do
                         putStrLn $ "File does not exist: " ++ gensAndLoads
                         exitWith $ ExitFailure 1
                     stationCsv <- B.readFile gensAndLoads
@@ -134,12 +134,10 @@ main = runWithPkgInfoConfiguration mainInfo pkgInfo $ \conf -> do
                         cleanPows
                     return (locRows,cleanPows)
 
-                unless dryRun $ runDB $ do
+                unless dryRun $ runDB $
                     when updateLocs $ do
                         deleteWhere ([] :: [Filter DuidLocation])
-                        insertMany_ . map (\(duid, (lat, lon), comm) -> DuidLocation duid lat lon comm)
-                                    . V.toList
-                                    $ locs
+                        insertMany_ . V.toList $ locs
 
                         deleteWhere ([] :: [Filter PowerStation])
                         insertMany_  ps
@@ -210,10 +208,10 @@ joinText' a b = T.concat [b,", ", a]
 -- joinWith :: (PowerStation -> PowerStation -> Text) -> Maybe  -> Maybe a -> Maybe b
 -- joinWith f (Just t) (Just b)
 
-parseGensAndSchedLoads :: ByteString -> Either String (V.Vector (Text, (Double, Double), Text))
+parseGensAndSchedLoads :: ByteString -> Either String (V.Vector DuidLocation)
 parseGensAndSchedLoads bs =  do
     vec <- decode NoHeader bs
     V.mapM prs vec where
         prs (duid,llstr,comm) = do
-            ll <- A.parseOnly ((,) <$> A.double <*> (" " *> A.double)) llstr
-            return (duid,ll,comm)
+            (lat,lon) <- A.parseOnly ((,) <$> A.double <*> (" " *> A.double)) llstr
+            return $ DuidLocation (T.strip duid) lat lon (T.strip comm)
