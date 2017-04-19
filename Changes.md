@@ -1,3 +1,6 @@
+## 0.12.1.0, 2017-04-19
+* Fix bug where CSV's contained extraneous spaces in DUIDs
+
 ## 0.12.0.0, 2017-04-18
 * Strip spaces from PowerStation datatype when inserted into database (Part of the fix for #4)
 * Update to lts-8.11 (and GHC 8.0.2 to fix build error on macOS with GHC < 8.0.2)
