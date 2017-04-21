@@ -1,3 +1,6 @@
+## 0.12.2.0, 2017-04-21
+* Actually fix previous bug...
+
 ## 0.12.1.0, 2017-04-19
 * Fix bug where CSV's contained extraneous spaces in DUIDs
 

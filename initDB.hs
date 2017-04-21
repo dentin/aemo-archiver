@@ -107,7 +107,7 @@ main = runWithPkgInfoConfiguration mainInfo pkgInfo $ \conf -> do
                              . M.delete "-"
                              . M.delete " - "
                              . M.fromListWith (\a b -> either error id $ joinPowerStationRows a b)
-                             . map (\p -> (powerStationDuid p, p))
+                             . map (\p -> (T.strip $ powerStationDuid p, p{powerStationDuid = T.strip $ powerStationDuid p}))
                              . V.toList
                              $ psRows
 
