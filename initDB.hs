@@ -21,7 +21,7 @@ import           Data.Csv                    (HasHeader (..), Header, decode,
 
 
 
-import           Control.Monad               (unless, when)
+import           Control.Monad               (forM_, unless, when)
 
 import           System.Directory            (doesFileExist)
 import           System.Exit                 (ExitCode (ExitFailure), exitWith)
@@ -111,7 +111,6 @@ main = runWithPkgInfoConfiguration mainInfo pkgInfo $ \conf -> do
                              . V.toList
                              $ psRows
 
-                    -- mapM_ print cleanPows
                     B8.putStrLn $ encodeByName
                         ["Participant"
                         ,"Station Name"
@@ -132,15 +131,13 @@ main = runWithPkgInfoConfiguration mainInfo pkgInfo $ \conf -> do
                         ,"Max ROC/Min"
                         ]
                         cleanPows
+
                     return (locRows,cleanPows)
 
                 unless dryRun $ runDB $
                     when updateLocs $ do
-                        deleteWhere ([] :: [Filter DuidLocation])
-                        insertMany_ . V.toList $ locs
-
-                        deleteWhere ([] :: [Filter PowerStation])
-                        insertMany_  ps
+                        forM_ (V.toList locs) $ \loc -> upsert loc [DuidLocationDuid =. duidLocationDuid loc]
+                        forM_ ps $ \loc -> upsert loc [PowerStationDuid =. powerStationDuid loc]
 
             unless dryRun $ do
                 _ <- fetchArchiveActualLoad
@@ -165,7 +162,7 @@ joinPowerStationRows p1 p2 = PowerStation
     <*> joinOnM' powerStationPhysicalUnitNo         p1 p2
     <*> joinOn powerStationUnitSizeMW               p1 p2
     <*> pure (((||) `on` powerStationAggregation)   p1 p2)
-    <*> (pure $ powerStationDuid                    p1)     -- Should be guaranteed to be the same or something went very wrong
+    <*> pure (powerStationDuid                      p1)     -- Should be guaranteed to be the same or something went very wrong
     <*> sumText powerStationRegCapMW                p1 p2
     <*> sumText powerStationMaxCapMW                p1 p2
     <*> joinOnM powerStationMaxROCPerMin            p1 p2

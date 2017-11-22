@@ -1,3 +1,6 @@
+## 0.13.0.0 2017-11-22
+* UPSERT new powerstation data, so that we don't lose old data
+
 ## 0.12.2.0, 2017-04-21
 * Actually fix previous bug...
 

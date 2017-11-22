@@ -219,6 +219,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
         regCapMW                Text Maybe
         maxCapMW                Text Maybe
         maxROCPerMin            Text Maybe
+        UniquePowerStationDuid duid
         deriving Show
 
     AemoCsvFile

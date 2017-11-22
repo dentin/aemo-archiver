@@ -10,7 +10,7 @@ name:                aemo-archiver
 -- PVP summary:      +-+------- breaking API changes
 --                   | |  +----- non-breaking API additions
 --                   | |  | +--- code changes with no API change
-version:             0.12.2.0
+version:             0.13.0.0
 
 -- A short (one-line) description of the package.
 synopsis:            Utility for retriving AEMO power station data and inserting into a database
@@ -29,7 +29,7 @@ author:              Alex Mason
 
 -- An email address to which users can send suggestions, bug reports, and
 -- patches.
-maintainer:          Alex.Mason@nicta.com.au
+maintainer:          Alex.Mason@data61.csiro.au
 
 -- A copyright notice.
 -- copyright:
